@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
+    "postinstall": "prisma generate",
     "start": "next start",
+    "start:railway": "npx prisma migrate deploy && next start",
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
