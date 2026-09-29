@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sistem Manajemen Hauling Batubara (AngkutanToyibV1)
 
-## Getting Started
+Operational & financial tracking for coal hauling — ritase, dynamic HPP, and Owner dashboard.
 
-First, run the development server:
+## Tech stack
+
+- Next.js 14 (App Router) + TypeScript
+- Tailwind CSS + shadcn-style UI primitives
+- Prisma 5 + PostgreSQL (Supabase)
+- NextAuth.js (credentials / RBAC)
+- Recharts (dashboard charts)
+
+## Quick start
 
 ```bash
+cd AngkutanToyibV1
+npm install
+
+# 1. Set DATABASE_URL in .env (Supabase Postgres URI)
+# 2. Generate client & push schema
+npm run db:generate
+npm run db:push
+npm run db:seed
+
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000/dashboard](http://localhost:3000/dashboard) after login.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Seed accounts (password: `password123`)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Email / username | Role |
+|-------|------|
+| owner@toyib.local | OWNER |
+| admin@toyib.local | ADMIN |
+| budi | OPERATOR (supir Budi Santoso, unit DT-01) |
+| finance@toyib.local | FINANCE |
 
-## Learn More
+Akun supir dibuat dari **Master Driver** (username + password), bukan dari menu Users.
 
-To learn more about Next.js, take a look at the following resources:
+## Project map
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Path | Purpose |
+|------|---------|
+| `prisma/schema.prisma` | Full domain schema (RBAC, masters, ops, audit) |
+| `src/lib/calculations/hpp.ts` | Revenue / HPP / profit formulas |
+| `src/actions/daily-operation.ts` | CRUD + AuditLog for ritase |
+| `src/middleware.ts` | Route-level RBAC |
+| `src/app/dashboard/page.tsx` | Owner command center |
+| `src/lib/auth/rbac.ts` | Permission helpers |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## RBAC
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **ADMIN / OPERATOR** (+ OWNER): `/operations` input
+- **FINANCE** (+ OWNER): `/settings/hpp`
+- **OWNER / MANAGER / ADMIN / FINANCE**: `/dashboard`

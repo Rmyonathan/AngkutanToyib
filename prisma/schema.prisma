@@ -1,0 +1,473 @@
+// Sistem Manajemen Hauling Batubara — Prisma Schema
+// Workflow: Admin creates DO Trip → Supir uploads photos → Admin verifies & completes
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  OWNER
+  MANAGER
+  ADMIN
+  OPERATOR
+  FINANCE
+}
+
+enum UnitStatus {
+  RUNNING
+  STANDBY
+  BREAKDOWN
+  MAINTENANCE
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum SalarySystem {
+  PER_TON
+  MONTHLY
+  DAILY
+}
+
+enum AttendanceStatus {
+  ACTIVE
+  LEAVE
+  INACTIVE
+}
+
+enum FieldSubmissionStatus {
+  PENDING
+  PROCESSED
+  REJECTED
+}
+
+/// DO dibuat saat Admin memverifikasi upload supir:
+/// VERIFIED → INVOICED (sudah ditagih) → COMPLETED (invoice lunas)
+enum DeliveryOrderStatus {
+  VERIFIED
+  COMPLETED
+  INVOICED
+}
+
+enum OperationalCostType {
+  SOLAR
+  MAINTENANCE
+  LAINNYA
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIAL
+  PAID
+  CANCELLED
+}
+
+enum PaymentMethod {
+  TRANSFER
+  CASH
+  GIRO
+  OTHER
+}
+
+enum JournalEntryType {
+  CASH_OUT
+  CASH_IN
+}
+
+enum JournalCategory {
+  SOLAR
+  DRIVER
+  TIRE
+  MAINTENANCE
+  CICILAN
+  DEPRECIATION
+  MOVING
+  BIAYA_LAIN
+  UANG_JALAN
+  REVENUE
+  OTHER
+}
+
+// ─── Auth / RBAC ─────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(OPERATOR)
+  /// Nonaktif = tidak bisa login (user tidak dihapus karena terikat audit log)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  auditLogs        AuditLog[]
+  fieldSubmissions FieldSubmission[]
+  journalEntries   HppJournalEntry[]
+  deliveryOrders   DeliveryOrder[]   @relation("DoCreatedBy")
+  /// Akun login supir (dibuat bersamaan dengan Master Driver)
+  driver           MasterDriver?
+  invoices         Invoice[]         @relation("InvoiceCreatedBy")
+  payments         InvoicePayment[]  @relation("PaymentCreatedBy")
+
+  @@map("users")
+}
+
+/// Hak akses per role yang diubah Owner di /users. Role tanpa baris = default di rbac.ts.
+/// OWNER selalu akses penuh (tidak disimpan di sini).
+model RolePermission {
+  role        Role     @id
+  permissions String[]
+  updatedAt   DateTime @updatedAt
+
+  @@map("role_permissions")
+}
+
+// ─── Master Data ─────────────────────────────────────────────────────────────
+
+model MasterUnit {
+  id                       String     @id @default(cuid())
+  unitNumber               String     @unique
+  brandType                String
+  year                     Int
+  licensePlate             String     @unique
+  capacity                 Float
+  /// Driver yang memegang unit ini (1 driver = 1 unit)
+  defaultDriverId          String?    @unique
+  status                   UnitStatus @default(STANDBY)
+  currentKm                Float      @default(0)
+  operationStartDate       DateTime?
+  purchasePrice            Float?
+  estimatedSalvageValue    Float?     @default(0)
+  economicLifespanDays     Int?
+  /// Kosong = ikut Hari Operasi / Bulan di HPP Settings
+  estimatedOpsDaysPerMonth Int?
+  monthlyCicilan           Float?
+  monthlyMaintenanceBudget Float?
+  monthlyMovingCost        Float?
+  allocatedTonasePerPeriod Float?
+  createdAt                DateTime   @default(now())
+  updatedAt                DateTime   @updatedAt
+
+  defaultDriver    MasterDriver?      @relation("UnitDefaultDriver", fields: [defaultDriverId], references: [id], onDelete: SetNull)
+  deliveryOrders   DeliveryOrder[]
+  breakdownHistory BreakdownHistory[]
+  fieldSubmissions FieldSubmission[]
+  journalEntries   HppJournalEntry[]
+  operationalCosts OperationalCost[]
+
+  @@map("master_units")
+}
+
+model MasterDriver {
+  id               String           @id @default(cuid())
+  name             String
+  driverId         String           @unique
+  /// Akun login supir — upload dokumen otomatis tercatat atas driver ini
+  userId           String?          @unique
+  salarySystem     SalarySystem     @default(PER_TON)
+  driverRatePerTon Float            @default(0)
+  monthlySalary    Float?
+  dailySalary      Float?
+  attendanceStatus AttendanceStatus @default(ACTIVE)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  user             User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  assignedUnit     MasterUnit?       @relation("UnitDefaultDriver")
+  deliveryOrders   DeliveryOrder[]
+  fieldSubmissions FieldSubmission[]
+  operationalCosts OperationalCost[]
+
+  @@map("master_drivers")
+}
+
+model MasterCustomer {
+  id              String   @id @default(cuid())
+  customerName    String
+  loadingLocation String
+  dumpingLocation String
+  oneWayDistance  Float
+  ratePerTon      Float
+  targetTonase    Float    @default(0)
+  /// Tempo pembayaran (hari) — jatuh tempo invoice = tanggal invoice + tempo
+  paymentTermDays Int      @default(30)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  deliveryOrders DeliveryOrder[]
+  invoices       Invoice[]
+  trips          CustomerTrip[]
+
+  @@map("master_customers")
+}
+
+/// Rute / trip milik customer — dipilih supir saat upload dokumen.
+/// Field kosong = ikut data customer (tarif) / 0 (uang jalan).
+model CustomerTrip {
+  id         String   @id @default(cuid())
+  customerId String
+  name       String
+  distanceKm Float?
+  ratePerTon Float?
+  uangJalan  Float?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer         MasterCustomer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  deliveryOrders   DeliveryOrder[]
+  fieldSubmissions FieldSubmission[]
+
+  @@unique([customerId, name])
+  @@map("customer_trips")
+}
+
+model MasterCostConfig {
+  id                       String   @id @default(cuid())
+  name                     String   @default("Default")
+  isActive                 Boolean  @default(true)
+  globalSolarPrice         Float
+  globalTirePrice          Float
+  tireLifespanDays         Int
+  defaultMaintenanceBudget Float
+  defaultCicilan           Float
+  defaultDepreciation      Float
+  defaultMovingCost        Float
+  estimatedOpsDaysPerMonth Int      @default(25)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@map("master_cost_configs")
+}
+
+model HppJournalEntry {
+  id          String           @id @default(cuid())
+  date        DateTime         @db.Date
+  entryType   JournalEntryType @default(CASH_OUT)
+  category    JournalCategory  @default(OTHER)
+  description String
+  amount      Float
+  unitId      String?
+  createdById String?
+  notes       String?
+  /// true = hanya mengurangi Kas, tidak menambah HPP (biaya sudah dialokasikan
+  /// lewat HPP Settings: bayar gaji bulanan, beli ban, bayar cicilan, dll.)
+  kasOnly     Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  unit      MasterUnit? @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  createdBy User?       @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([date])
+  @@index([entryType, category])
+  @@map("hpp_journal_entries")
+}
+
+// ─── Field Submissions (upload foto supir, 1 upload = 1 trip) ─────────────────
+
+model FieldSubmission {
+  id              String                @id @default(cuid())
+  date            DateTime              @db.Date
+  unitId          String
+  driverId        String
+  customerTripId  String
+  suratJalanPhoto String
+  /// Opsional — tidak semua trip isi solar
+  solarPhoto      String?
+  /// Opsional — nota tol / biaya lain
+  otherPhoto      String?
+  notes           String?
+  status          FieldSubmissionStatus @default(PENDING)
+  rejectReason    String?
+  /// DO yang dibuat Admin saat verifikasi
+  deliveryOrderId String?               @unique
+  createdById     String
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  driver           MasterDriver      @relation(fields: [driverId], references: [id])
+  unit             MasterUnit        @relation(fields: [unitId], references: [id])
+  customerTrip     CustomerTrip      @relation(fields: [customerTripId], references: [id])
+  createdBy        User              @relation(fields: [createdById], references: [id])
+  deliveryOrder    DeliveryOrder?    @relation(fields: [deliveryOrderId], references: [id], onDelete: SetNull)
+  operationalCosts OperationalCost[]
+
+  @@index([status, date])
+  @@index([driverId, date])
+  @@map("field_submissions")
+}
+
+// ─── Delivery Order (dibuat Admin dari upload supir) ──────────────────────────
+
+model DeliveryOrder {
+  id              String              @id @default(cuid())
+  internalTripId  String              @unique // e.g. TRIP-20260926-0001
+  date            DateTime            @db.Date
+  unitId          String
+  driverId        String
+  customerId      String?
+  customerTripId  String?
+  uangJalan       Float               @default(0)
+  ratePerTon      Float               @default(0)
+  ticketNumber    String?             @unique
+  /// Tonase dari tiket timbangan
+  netto           Float?
+  kmHauling       Float?
+  suratJalanPhoto String?
+  invoiceId       String?
+  status          DeliveryOrderStatus @default(VERIFIED)
+  notes           String?
+  createdById     String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  unit             MasterUnit        @relation(fields: [unitId], references: [id])
+  driver           MasterDriver      @relation(fields: [driverId], references: [id])
+  customer         MasterCustomer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerTrip     CustomerTrip?     @relation(fields: [customerTripId], references: [id], onDelete: SetNull)
+  invoice          Invoice?          @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  createdBy        User?             @relation("DoCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  fieldSubmission  FieldSubmission?
+  operationalCosts OperationalCost[]
+
+  @@index([date])
+  @@index([unitId, date])
+  @@index([customerId, date])
+  @@index([status])
+  @@map("delivery_orders")
+}
+
+// ─── Verified operational costs (from Solar / Biaya Lain photos) ──────────────
+
+model OperationalCost {
+  id                String              @id @default(cuid())
+  costType          OperationalCostType
+  date              DateTime            @db.Date
+  unitId            String
+  driverId          String
+  deliveryOrderId   String?
+  /// Solar: volume × pricePerLiter
+  amount            Float
+  /// Liter (solar)
+  volume            Float?
+  pricePerLiter     Float?
+  description       String
+  fieldSubmissionId String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  unit            MasterUnit       @relation(fields: [unitId], references: [id])
+  driver          MasterDriver     @relation(fields: [driverId], references: [id])
+  deliveryOrder   DeliveryOrder?   @relation(fields: [deliveryOrderId], references: [id], onDelete: SetNull)
+  fieldSubmission FieldSubmission? @relation(fields: [fieldSubmissionId], references: [id], onDelete: SetNull)
+
+  @@index([date])
+  @@index([unitId, date])
+  @@index([costType])
+  @@map("operational_costs")
+}
+
+model Invoice {
+  id                String        @id @default(cuid())
+  invoiceNumber     String        @unique
+  customerId        String
+  invoiceDate       DateTime      @default(now()) @db.Date
+  /// invoiceDate + customer.paymentTermDays (editable)
+  dueDate           DateTime      @default(now()) @db.Date
+  periodStart       DateTime      @db.Date
+  periodEnd         DateTime      @db.Date
+  totalTonase       Float
+  /// Average rate (totalAmount ÷ totalTonase) — each DO keeps its own rate
+  ratePerTon        Float
+  totalAmount       Float
+  /// Σ payments.amount — uang yang benar-benar masuk kas
+  paidAmount        Float         @default(0)
+  /// Σ payments.withholdingAmount — PPh 23 dipotong customer (mengurangi piutang, bukan kas)
+  withholdingAmount Float         @default(0)
+  status            InvoiceStatus @default(ISSUED)
+  notes             String?
+  createdById       String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  customer       MasterCustomer   @relation(fields: [customerId], references: [id])
+  createdBy      User?            @relation("InvoiceCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  deliveryOrders DeliveryOrder[]
+  payments       InvoicePayment[]
+
+  @@index([customerId, periodStart])
+  @@index([status, dueDate])
+  @@map("invoices")
+}
+
+/// Satu penerimaan pembayaran (boleh cicil / sebagian).
+model InvoicePayment {
+  id                String        @id @default(cuid())
+  invoiceId         String
+  date              DateTime      @db.Date
+  /// Kas masuk (net yang ditransfer / dibayar)
+  amount            Float
+  /// PPh 23 / potongan yang ditahan customer (bukti potong)
+  withholdingAmount Float         @default(0)
+  method            PaymentMethod @default(TRANSFER)
+  reference         String?
+  notes             String?
+  createdById       String?
+  createdAt         DateTime      @default(now())
+
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation("PaymentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([date])
+  @@index([invoiceId])
+  @@map("invoice_payments")
+}
+
+model BreakdownHistory {
+  id               String    @id @default(cuid())
+  unitId           String
+  date             DateTime  @db.Date
+  issueDescription String
+  startTime        DateTime
+  endTime          DateTime?
+  downtimeHours    Float?
+  maintenanceCost  Float     @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  unit MasterUnit @relation(fields: [unitId], references: [id])
+
+  @@index([unitId, date])
+  @@map("breakdown_history")
+}
+
+model AuditLog {
+  id        String      @id @default(cuid())
+  userId    String
+  action    AuditAction
+  tableName String
+  recordId  String
+  oldData   Json?
+  newData   Json?
+  timestamp DateTime    @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([tableName, recordId])
+  @@index([userId, timestamp])
+  @@map("audit_logs")
+}
