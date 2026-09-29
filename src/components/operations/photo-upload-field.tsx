@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Camera, Check, Loader2, X } from "lucide-react";
+import { useUploadThing } from "@/lib/uploadthing";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -9,25 +10,47 @@ type Props = {
   hint?: string;
   value: string | null;
   onChange: (url: string | null) => void;
+  /** When true, upload via UploadThing CDN (production). Otherwise local MVP. */
+  useCloudUpload?: boolean;
 };
 
-/**
- * Mobile camera/gallery upload.
- * Saves via `/api/upload/local` → `public/uploads/field` (MVP, no external key).
- * UploadThing route (`/api/uploadthing`) is ready — switch UI to `UploadButton`
- * from `@/lib/uploadthing` when UPLOADTHING_TOKEN is configured.
- */
-export function PhotoUploadField({ label, hint, value, onChange }: Props) {
+export function PhotoUploadField({
+  label,
+  hint,
+  value,
+  onChange,
+  useCloudUpload = false,
+}: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [loading, setLoading] = useState(false);
+  const [localLoading, setLocalLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { startUpload, isUploading } = useUploadThing("fieldDocUploader", {
+    onClientUploadComplete: (res) => {
+      const file = res?.[0];
+      const url = file?.ufsUrl ?? file?.url;
+      if (url) onChange(url);
+      setLocalLoading(false);
+    },
+    onUploadError: (err) => {
+      setError(err.message);
+      setLocalLoading(false);
+    },
+  });
+
+  const loading = localLoading || isUploading;
 
   async function onFile(file: File | undefined) {
     if (!file) return;
     setError(null);
-    setLoading(true);
+    setLocalLoading(true);
 
     try {
+      if (useCloudUpload) {
+        await startUpload([file]);
+        return;
+      }
+
       const body = new FormData();
       body.append("file", file);
       const res = await fetch("/api/upload/local", { method: "POST", body });
@@ -37,7 +60,7 @@ export function PhotoUploadField({ label, hint, value, onChange }: Props) {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload gagal");
     } finally {
-      setLoading(false);
+      setLocalLoading(false);
     }
   }
 
@@ -47,6 +70,9 @@ export function PhotoUploadField({ label, hint, value, onChange }: Props) {
         <div>
           <p className="text-base font-semibold text-neutral-900">{label}</p>
           {hint && <p className="text-xs text-neutral-500">{hint}</p>}
+          {useCloudUpload && (
+            <p className="text-[10px] text-neutral-400">Cloud · UploadThing</p>
+          )}
         </div>
         {value && (
           <button

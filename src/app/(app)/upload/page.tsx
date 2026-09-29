@@ -3,6 +3,7 @@ import { UploadClient } from "@/components/operations/upload-client";
 import { getCurrentSession } from "@/lib/auth/session";
 import { canSubmitFieldDocs, canVerifyFieldDocs } from "@/lib/auth/rbac";
 import { prisma } from "@/lib/prisma";
+import { isUploadThingConfigured } from "@/lib/upload/config";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +54,7 @@ export default async function UploadPage() {
 
   return (
     <UploadClient
+      useCloudUpload={isUploadThingConfigured()}
       identity={
         ownDriver
           ? {

@@ -30,11 +30,17 @@ function canSeeItem(grants: Permission[], item: NavItem): boolean {
   return false;
 }
 
-function visibleChildren(grants: Permission[], item: NavItem) {
+function visibleChildren(
+  grants: Permission[],
+  item: NavItem,
+  role: AppRole
+) {
   if (!item.children) return [];
-  return item.children.filter(
-    (child) => !child.permission || grantsPermission(grants, child.permission)
-  );
+  return item.children.filter((child) => {
+    if (child.ownerOnly && role !== "OWNER") return false;
+    if (!child.permission) return true;
+    return grantsPermission(grants, child.permission);
+  });
 }
 
 export function Navbar({ user }: NavbarProps) {
@@ -46,13 +52,13 @@ export function Navbar({ user }: NavbarProps) {
     return NAV_ITEMS.map((item) => {
       if (!canSeeItem(user.permissions, item)) return null;
       if (item.children) {
-        const children = visibleChildren(user.permissions, item);
+        const children = visibleChildren(user.permissions, item, user.role);
         if (children.length === 0) return null;
         return { ...item, children };
       }
       return item;
     }).filter(Boolean) as NavItem[];
-  }, [user.permissions]);
+  }, [user.permissions, user.role]);
 
   function isActive(href: string) {
     return pathname === href || pathname.startsWith(`${href}/`);

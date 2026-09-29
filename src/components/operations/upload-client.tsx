@@ -37,6 +37,7 @@ export function UploadClient({
   drivers,
   units,
   recent,
+  useCloudUpload = false,
 }: {
   identity: { driverName: string; unitNumber: string | null } | null;
   onBehalf: boolean;
@@ -44,6 +45,7 @@ export function UploadClient({
   drivers: { id: string; name: string; unitId: string | null }[];
   units: { id: string; unitNumber: string }[];
   recent: RecentUpload[];
+  useCloudUpload?: boolean;
 }) {
   const [tripId, setTripId] = useState("");
   const [suratJalan, setSuratJalan] = useState<string | null>(null);
@@ -232,6 +234,7 @@ export function UploadClient({
           hint="Wajib"
           value={suratJalan}
           onChange={setSuratJalan}
+          useCloudUpload={useCloudUpload}
         />
 
         <Toggle
@@ -245,6 +248,7 @@ export function UploadClient({
             label="Foto Nota Solar"
             value={solar}
             onChange={setSolar}
+            useCloudUpload={useCloudUpload}
           />
         )}
 
@@ -258,6 +262,7 @@ export function UploadClient({
             label="Foto Nota Biaya Lain"
             value={other}
             onChange={setOther}
+            useCloudUpload={useCloudUpload}
           />
         )}
 

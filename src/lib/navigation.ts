@@ -4,6 +4,8 @@ export type NavChild = {
   href: string;
   label: string;
   permission?: Permission;
+  /** Visible only when logged in as Owner */
+  ownerOnly?: boolean;
 };
 
 export type NavItem = {
@@ -95,6 +97,11 @@ export const NAV_ITEMS: NavItem[] = [
     matchAny: ["hpp:read", "audit", "users"],
     children: [
       { href: "/settings/hpp", label: "HPP Settings", permission: "hpp:read" },
+      {
+        href: "/settings/storage",
+        label: "Penyimpanan Foto",
+        ownerOnly: true,
+      },
       { href: "/audit", label: "Audit Trail", permission: "audit" },
       { href: "/users", label: "Users & Role", permission: "users" },
     ],
