@@ -9,6 +9,7 @@ import {
 } from "@/actions/verify-submission";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
+import { DecimalField, MoneyField } from "@/components/ui/number-input";
 import { cn, formatNumber, formatRupiah } from "@/lib/utils";
 
 export type PendingRow = {
@@ -384,47 +385,39 @@ export function VerifyInboxClient({
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label>Tonase (ton)</Label>
-                  <Input
-                    type="number"
-                    step="0.001"
-                    min={0.001}
+                  <DecimalField
                     required
+                    decimals={3}
                     value={form.netto}
-                    onChange={(e) => set("netto", e.target.value)}
+                    onChange={(netto) => set("netto", netto)}
                   />
                 </div>
                 <div>
                   <Label>KM Hauling (opsional)</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    min={0}
+                  <DecimalField
+                    decimals={1}
                     placeholder={
                       currentTrip?.distanceKm != null
                         ? `jarak trip ${currentTrip.distanceKm} km`
                         : ""
                     }
                     value={form.kmHauling}
-                    onChange={(e) => set("kmHauling", e.target.value)}
+                    onChange={(kmHauling) => set("kmHauling", kmHauling)}
                   />
                 </div>
                 <div>
                   <Label>Tarif / Ton</Label>
-                  <Input
-                    type="number"
-                    min={1}
+                  <MoneyField
                     required
                     value={form.ratePerTon}
-                    onChange={(e) => set("ratePerTon", e.target.value)}
+                    onChange={(ratePerTon) => set("ratePerTon", ratePerTon)}
                   />
                 </div>
                 <div>
                   <Label>Uang Jalan</Label>
-                  <Input
-                    type="number"
-                    min={0}
+                  <MoneyField
                     value={form.uangJalan}
-                    onChange={(e) => set("uangJalan", e.target.value)}
+                    onChange={(uangJalan) => set("uangJalan", uangJalan)}
                   />
                 </div>
               </div>
@@ -436,21 +429,19 @@ export function VerifyInboxClient({
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <Label>Liter</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min={0}
+                    <DecimalField
+                      decimals={2}
                       value={form.solarLiters}
-                      onChange={(e) => set("solarLiters", e.target.value)}
+                      onChange={(solarLiters) => set("solarLiters", solarLiters)}
                     />
                   </div>
                   <div>
                     <Label>Harga / Liter</Label>
-                    <Input
-                      type="number"
-                      min={0}
+                    <MoneyField
                       value={form.solarPricePerLiter}
-                      onChange={(e) => set("solarPricePerLiter", e.target.value)}
+                      onChange={(solarPricePerLiter) =>
+                        set("solarPricePerLiter", solarPricePerLiter)
+                      }
                     />
                   </div>
                 </div>
@@ -470,11 +461,9 @@ export function VerifyInboxClient({
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <Label>Nominal (Rp)</Label>
-                      <Input
-                        type="number"
-                        min={0}
+                      <MoneyField
                         value={form.otherAmount}
-                        onChange={(e) => set("otherAmount", e.target.value)}
+                        onChange={(otherAmount) => set("otherAmount", otherAmount)}
                       />
                     </div>
                     <div>

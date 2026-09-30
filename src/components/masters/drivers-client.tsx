@@ -11,6 +11,7 @@ import {
 } from "@/actions/masters/drivers";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/number-input";
 import { FormDialog } from "@/components/masters/form-dialog";
 import { formatRupiah } from "@/lib/utils";
 
@@ -330,36 +331,33 @@ export function DriversClient({
           </div>
           <div>
             <Label>Rate / Ton</Label>
-            <Input
-              type="number"
+            <MoneyInput
               value={form.driverRatePerTon}
-              onChange={(e) =>
-                setForm({ ...form, driverRatePerTon: Number(e.target.value) })
+              onChange={(driverRatePerTon) =>
+                setForm({ ...form, driverRatePerTon })
               }
             />
           </div>
           <div>
             <Label>Gaji Bulanan</Label>
-            <Input
-              type="number"
-              value={form.monthlySalary ?? ""}
-              onChange={(e) =>
+            <MoneyInput
+              value={form.monthlySalary === "" ? 0 : form.monthlySalary}
+              onChange={(monthlySalary) =>
                 setForm({
                   ...form,
-                  monthlySalary: e.target.value === "" ? "" : Number(e.target.value),
+                  monthlySalary: monthlySalary === 0 ? "" : monthlySalary,
                 })
               }
             />
           </div>
           <div>
             <Label>Gaji Harian</Label>
-            <Input
-              type="number"
-              value={form.dailySalary ?? ""}
-              onChange={(e) =>
+            <MoneyInput
+              value={form.dailySalary === "" ? 0 : form.dailySalary}
+              onChange={(dailySalary) =>
                 setForm({
                   ...form,
-                  dailySalary: e.target.value === "" ? "" : Number(e.target.value),
+                  dailySalary: dailySalary === 0 ? "" : dailySalary,
                 })
               }
             />

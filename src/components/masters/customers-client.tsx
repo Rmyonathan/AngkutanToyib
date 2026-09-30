@@ -10,6 +10,13 @@ import {
 } from "@/actions/masters/customers";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
+import {
+  DecimalField,
+  DecimalInput,
+  IntegerInput,
+  MoneyField,
+  MoneyInput,
+} from "@/components/ui/number-input";
 import { FormDialog } from "@/components/masters/form-dialog";
 import { formatNumber, formatRupiah } from "@/lib/utils";
 
@@ -304,46 +311,37 @@ export function CustomersClient({
           </div>
           <div>
             <Label>Jarak One Way (km)</Label>
-            <Input
-              type="number"
-              step="0.1"
+            <DecimalInput
               required
+              decimals={1}
               value={form.oneWayDistance}
-              onChange={(e) =>
-                setForm({ ...form, oneWayDistance: Number(e.target.value) })
+              onChange={(oneWayDistance) =>
+                setForm({ ...form, oneWayDistance })
               }
             />
           </div>
           <div>
             <Label>Tarif / Ton</Label>
-            <Input
-              type="number"
+            <MoneyInput
               required
               value={form.ratePerTon}
-              onChange={(e) =>
-                setForm({ ...form, ratePerTon: Number(e.target.value) })
-              }
+              onChange={(ratePerTon) => setForm({ ...form, ratePerTon })}
             />
           </div>
           <div>
             <Label>Target Tonase</Label>
-            <Input
-              type="number"
+            <DecimalInput
+              decimals={2}
               value={form.targetTonase}
-              onChange={(e) =>
-                setForm({ ...form, targetTonase: Number(e.target.value) })
-              }
+              onChange={(targetTonase) => setForm({ ...form, targetTonase })}
             />
           </div>
           <div>
             <Label>Tempo Pembayaran (hari)</Label>
-            <Input
-              type="number"
-              min={0}
-              max={365}
+            <IntegerInput
               value={form.paymentTermDays}
-              onChange={(e) =>
-                setForm({ ...form, paymentTermDays: Number(e.target.value) })
+              onChange={(paymentTermDays) =>
+                setForm({ ...form, paymentTermDays })
               }
             />
             <p className="mt-1 text-[11px] text-neutral-400">
@@ -430,30 +428,24 @@ function TripsEditor({
               value={t.name}
               onChange={(e) => update(t.key, { name: e.target.value })}
             />
-            <Input
+            <DecimalField
               className="col-span-4 sm:col-span-2"
-              type="number"
-              step="0.1"
-              min={0}
+              decimals={1}
               placeholder="km"
               value={t.distanceKm}
-              onChange={(e) => update(t.key, { distanceKm: e.target.value })}
+              onChange={(distanceKm) => update(t.key, { distanceKm })}
             />
-            <Input
+            <MoneyField
               className="col-span-4 sm:col-span-2"
-              type="number"
-              min={0}
               placeholder="ikut customer"
               value={t.ratePerTon}
-              onChange={(e) => update(t.key, { ratePerTon: e.target.value })}
+              onChange={(ratePerTon) => update(t.key, { ratePerTon })}
             />
-            <Input
+            <MoneyField
               className="col-span-4 sm:col-span-2"
-              type="number"
-              min={0}
               placeholder="0"
               value={t.uangJalan}
-              onChange={(e) => update(t.key, { uangJalan: e.target.value })}
+              onChange={(uangJalan) => update(t.key, { uangJalan })}
             />
             <div className="col-span-12 flex items-center justify-between gap-2 sm:col-span-2">
               <input

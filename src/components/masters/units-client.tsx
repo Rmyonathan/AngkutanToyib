@@ -12,6 +12,7 @@ import {
 } from "@/actions/masters/units";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
+import { DecimalInput, IntegerInput } from "@/components/ui/number-input";
 import { FormDialog } from "@/components/masters/form-dialog";
 import { UnitStatusBadge } from "@/components/masters/status-badge";
 import { formatNumber } from "@/lib/utils";
@@ -306,11 +307,10 @@ export function UnitsClient({
           </div>
           <div>
             <Label>Tahun</Label>
-            <Input
-              type="number"
+            <IntegerInput
               required
               value={form.year}
-              onChange={(e) => setForm({ ...form, year: Number(e.target.value) })}
+              onChange={(year) => setForm({ ...form, year })}
             />
           </div>
           <div>
@@ -323,14 +323,11 @@ export function UnitsClient({
           </div>
           <div>
             <Label>Kapasitas (ton)</Label>
-            <Input
-              type="number"
-              step="0.1"
+            <DecimalInput
               required
+              decimals={1}
               value={form.capacity}
-              onChange={(e) =>
-                setForm({ ...form, capacity: Number(e.target.value) })
-              }
+              onChange={(capacity) => setForm({ ...form, capacity })}
             />
           </div>
           <div>
@@ -366,12 +363,9 @@ export function UnitsClient({
           </div>
           <div>
             <Label>Kilometer Saat Ini</Label>
-            <Input
-              type="number"
+            <IntegerInput
               value={form.currentKm}
-              onChange={(e) =>
-                setForm({ ...form, currentKm: Number(e.target.value) })
-              }
+              onChange={(currentKm) => setForm({ ...form, currentKm })}
             />
           </div>
           <div>

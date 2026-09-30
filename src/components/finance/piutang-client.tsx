@@ -7,6 +7,7 @@ import { Eye, FileText, Wallet } from "lucide-react";
 import { createInvoiceFromDos } from "@/actions/finance";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
+import { IntegerInput } from "@/components/ui/number-input";
 import { Kpi } from "@/components/finance/finance-shared";
 import type {
   InvoiceRow,
@@ -336,12 +337,9 @@ function UnbilledCard({
           </div>
           <div>
             <Label>Tempo (hari)</Label>
-            <Input
-              type="number"
-              min={0}
-              max={365}
+            <IntegerInput
               value={termDays}
-              onChange={(e) => setTermDays(Number(e.target.value))}
+              onChange={setTermDays}
             />
             <p className="mt-1 text-[11px] text-neutral-400">
               Jatuh tempo {invoiceDate ? addDays(invoiceDate, termDays || 0) : "—"}

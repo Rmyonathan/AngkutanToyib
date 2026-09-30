@@ -11,6 +11,7 @@ import {
 } from "@/actions/breakdown";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
+import { DecimalInput, MoneyInput } from "@/components/ui/number-input";
 import { FormDialog } from "@/components/masters/form-dialog";
 import { formatNumber, formatRupiah } from "@/lib/utils";
 import type { BreakdownMonthlyStats } from "@/lib/breakdown/stats";
@@ -352,12 +353,10 @@ export function BreakdownClient({
           </div>
           <div>
             <Label>Biaya (Rp)</Label>
-            <Input
-              type="number"
-              min={0}
+            <MoneyInput
               value={form.maintenanceCost}
-              onChange={(e) =>
-                setForm({ ...form, maintenanceCost: Number(e.target.value) })
+              onChange={(maintenanceCost) =>
+                setForm({ ...form, maintenanceCost })
               }
             />
           </div>
@@ -391,17 +390,18 @@ export function BreakdownClient({
           </div>
           <div className="sm:col-span-2">
             <Label>Downtime jam (opsional — auto dari mulai/selesai)</Label>
-            <Input
-              type="number"
-              min={0}
-              step={0.1}
+            <DecimalInput
+              decimals={1}
               placeholder="Auto"
-              value={form.downtimeHours ?? ""}
-              onChange={(e) =>
+              value={
+                form.downtimeHours === "" || form.downtimeHours == null
+                  ? 0
+                  : form.downtimeHours
+              }
+              onChange={(hours) =>
                 setForm({
                   ...form,
-                  downtimeHours:
-                    e.target.value === "" ? "" : Number(e.target.value),
+                  downtimeHours: hours === 0 ? "" : hours,
                 })
               }
             />

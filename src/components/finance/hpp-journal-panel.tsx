@@ -13,6 +13,7 @@ import {
 } from "@/actions/finance/journal";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
+import { MoneyField } from "@/components/ui/number-input";
 import { FormDialog } from "@/components/masters/form-dialog";
 import { formatRupiah } from "@/lib/utils";
 import { todayDateOnly } from "@/lib/dates";
@@ -219,14 +220,11 @@ export function HppJournalPanel({
           </div>
           <div>
             <Label>Nominal (Rp)</Label>
-            <Input
-              type="number"
+            <MoneyField
               required
-              min={1}
-              step={1}
               placeholder="0"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={setAmount}
             />
           </div>
           <div>

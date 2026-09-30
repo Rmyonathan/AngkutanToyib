@@ -3,16 +3,15 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Pencil, Printer, Trash2 } from "lucide-react";
+import { ArrowLeft, Printer, Trash2 } from "lucide-react";
 import {
   cancelInvoice,
   deleteInvoicePayment,
   recordInvoicePayment,
-  updateInvoiceDetails,
 } from "@/actions/finance";
-import { FormDialog } from "@/components/masters/form-dialog";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/number-input";
 import { Kpi } from "@/components/finance/finance-shared";
 import {
   InvoiceStatusBadge,
@@ -44,13 +43,6 @@ export function InvoiceDetailClient({
     reference: "",
     notes: "",
   });
-  const [editOpen, setEditOpen] = useState(false);
-  const [details, setDetails] = useState({
-    dueDate: invoice.dueDate,
-    periodStart: invoice.periodStart,
-    periodEnd: invoice.periodEnd,
-  });
-
   const isOpen = invoice.status === "ISSUED" || invoice.status === "PARTIAL";
   const isCancelled = invoice.status === "CANCELLED";
 
@@ -110,30 +102,6 @@ export function InvoiceDetailClient({
     });
   }
 
-  function openEdit() {
-    setDetails({
-      dueDate: invoice.dueDate,
-      periodStart: invoice.periodStart,
-      periodEnd: invoice.periodEnd,
-    });
-    setError(null);
-    setEditOpen(true);
-  }
-
-  function saveDetails(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    startTransition(async () => {
-      const res = await updateInvoiceDetails({ invoiceId: invoice.id, ...details });
-      if (!res.success) {
-        setError(res.error);
-        return;
-      }
-      setEditOpen(false);
-      router.refresh();
-    });
-  }
-
   return (
     <div className="space-y-6">
       <div className="sticky top-14 z-30 flex flex-wrap items-center gap-3 rounded-xl border border-neutral-200 bg-white/95 px-3 py-2 shadow-sm backdrop-blur print:hidden">
@@ -161,20 +129,14 @@ export function InvoiceDetailClient({
             {invoice.invoiceNumber}
           </h1>
           <p className="mt-1 text-sm text-neutral-500">
-            {invoice.customer.name} · {invoice.dos.length} DO · periode{" "}
-            {invoice.periodStart} s/d {invoice.periodEnd}
+            {invoice.customer.name} · {invoice.dos.length} DO · dibuat{" "}
+            {invoice.invoiceDate}
           </p>
           <div className="mt-2">
             <InvoiceStatusBadge status={invoice.status} label={invoice.statusLabel} />
           </div>
         </div>
         <div className="flex gap-2">
-          {canWrite && !isCancelled && (
-            <Button type="button" variant="outline" disabled={pending} onClick={openEdit}>
-              <Pencil className="mr-1.5 h-4 w-4" />
-              Edit Invoice
-            </Button>
-          )}
           <Button type="button" variant="outline" onClick={() => window.print()}>
             <Printer className="mr-1.5 h-4 w-4" />
             Cetak Invoice
@@ -215,8 +177,8 @@ export function InvoiceDetailClient({
               : invoice.outstanding <= 0
                 ? "Lunas"
                 : invoice.daysOverdue > 0
-                  ? `Lewat jatuh tempo ${invoice.daysOverdue} hari`
-                  : `Jatuh tempo ${invoice.dueDate}`
+                  ? `Lewat tempo ${invoice.daysOverdue} hari`
+                  : "Belum lunas"
           }
         />
       </section>
@@ -233,14 +195,8 @@ export function InvoiceDetailClient({
             <p className="text-sm text-neutral-600">{invoice.invoiceNumber}</p>
           </div>
           <dl className="grid grid-cols-[auto_auto] gap-x-4 gap-y-1 text-sm">
-            <dt className="text-neutral-500">Tanggal</dt>
+            <dt className="text-neutral-500">Tanggal dibuat</dt>
             <dd className="font-medium">{invoice.invoiceDate}</dd>
-            <dt className="text-neutral-500">Jatuh tempo</dt>
-            <dd className="font-medium">{invoice.dueDate}</dd>
-            <dt className="text-neutral-500">Periode</dt>
-            <dd className="font-medium">
-              {invoice.periodStart} s/d {invoice.periodEnd}
-            </dd>
           </dl>
         </div>
         <div className="py-4 text-sm">
@@ -429,21 +385,17 @@ export function InvoiceDetailClient({
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label>Kas masuk (Rp)</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={form.amount || ""}
-                    onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })}
+                  <MoneyInput
+                    value={form.amount}
+                    onChange={(amount) => setForm({ ...form, amount })}
                   />
                 </div>
                 <div>
                   <Label>PPh 23 (Rp)</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={form.withholdingAmount || ""}
-                    onChange={(e) =>
-                      setForm({ ...form, withholdingAmount: Number(e.target.value) })
+                  <MoneyInput
+                    value={form.withholdingAmount}
+                    onChange={(withholdingAmount) =>
+                      setForm({ ...form, withholdingAmount })
                     }
                   />
                 </div>
@@ -470,57 +422,6 @@ export function InvoiceDetailClient({
         </div>
       </section>
 
-      <FormDialog open={editOpen} title={`Edit ${invoice.invoiceNumber}`} onClose={() => setEditOpen(false)}>
-        <form onSubmit={saveDetails} className="space-y-3">
-          <div>
-            <Label>Jatuh tempo</Label>
-            <Input
-              type="date"
-              required
-              min={invoice.invoiceDate}
-              value={details.dueDate}
-              onChange={(e) => setDetails({ ...details, dueDate: e.target.value })}
-            />
-            <p className="mt-1 text-[11px] text-neutral-400">
-              Default tanggal invoice ({invoice.invoiceDate}) + tempo customer (
-              {invoice.customer.paymentTermDays} hari).
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <Label>Periode dari</Label>
-              <Input
-                type="date"
-                required
-                value={details.periodStart}
-                onChange={(e) => setDetails({ ...details, periodStart: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label>Periode sampai</Label>
-              <Input
-                type="date"
-                required
-                min={details.periodStart}
-                value={details.periodEnd}
-                onChange={(e) => setDetails({ ...details, periodEnd: e.target.value })}
-              />
-            </div>
-          </div>
-          <p className="text-[11px] text-neutral-400">
-            Periode hanya keterangan di invoice — daftar DO & total tagihan tidak berubah.
-          </p>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
-              Batal
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Menyimpan…" : "Simpan"}
-            </Button>
-          </div>
-        </form>
-      </FormDialog>
     </div>
   );
 }

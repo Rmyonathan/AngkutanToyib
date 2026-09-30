@@ -7,6 +7,7 @@ import {
 } from "@/actions/masters/costs";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
+import { IntegerInput, MoneyInput } from "@/components/ui/number-input";
 import { formatRupiah } from "@/lib/utils";
 
 export type CostRow = {
@@ -99,34 +100,29 @@ export function CostsClient({
 
         <div>
           <Label>Harga Solar (Rp/liter)</Label>
-          <Input
-            type="number"
+          <MoneyInput
             disabled={!canWrite}
             value={form.globalSolarPrice}
-            onChange={(e) =>
-              setForm({ ...form, globalSolarPrice: Number(e.target.value) })
+            onChange={(globalSolarPrice) =>
+              setForm({ ...form, globalSolarPrice })
             }
           />
         </div>
         <div>
           <Label>Harga Ban (set)</Label>
-          <Input
-            type="number"
+          <MoneyInput
             disabled={!canWrite}
             value={form.globalTirePrice}
-            onChange={(e) =>
-              setForm({ ...form, globalTirePrice: Number(e.target.value) })
-            }
+            onChange={(globalTirePrice) => setForm({ ...form, globalTirePrice })}
           />
         </div>
         <div>
           <Label>Umur Ban (hari)</Label>
-          <Input
-            type="number"
+          <IntegerInput
             disabled={!canWrite}
             value={form.tireLifespanDays}
-            onChange={(e) =>
-              setForm({ ...form, tireLifespanDays: Number(e.target.value) })
+            onChange={(tireLifespanDays) =>
+              setForm({ ...form, tireLifespanDays })
             }
           />
           <p className="mt-1 text-[11px] text-neutral-400">
@@ -135,62 +131,49 @@ export function CostsClient({
         </div>
         <div>
           <Label>Hari Operasi / Bulan</Label>
-          <Input
-            type="number"
+          <IntegerInput
             disabled={!canWrite}
             value={form.estimatedOpsDaysPerMonth}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                estimatedOpsDaysPerMonth: Number(e.target.value),
-              })
+            onChange={(estimatedOpsDaysPerMonth) =>
+              setForm({ ...form, estimatedOpsDaysPerMonth })
             }
           />
         </div>
         <div>
           <Label>Budget Maintenance / bln</Label>
-          <Input
-            type="number"
+          <MoneyInput
             disabled={!canWrite}
             value={form.defaultMaintenanceBudget}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                defaultMaintenanceBudget: Number(e.target.value),
-              })
+            onChange={(defaultMaintenanceBudget) =>
+              setForm({ ...form, defaultMaintenanceBudget })
             }
           />
         </div>
         <div>
           <Label>Cicilan Default / bln</Label>
-          <Input
-            type="number"
+          <MoneyInput
             disabled={!canWrite}
             value={form.defaultCicilan}
-            onChange={(e) =>
-              setForm({ ...form, defaultCicilan: Number(e.target.value) })
-            }
+            onChange={(defaultCicilan) => setForm({ ...form, defaultCicilan })}
           />
         </div>
         <div>
           <Label>Depresiasi Default / hari</Label>
-          <Input
-            type="number"
+          <MoneyInput
             disabled={!canWrite}
             value={form.defaultDepreciation}
-            onChange={(e) =>
-              setForm({ ...form, defaultDepreciation: Number(e.target.value) })
+            onChange={(defaultDepreciation) =>
+              setForm({ ...form, defaultDepreciation })
             }
           />
         </div>
         <div>
           <Label>Moving Cost / periode</Label>
-          <Input
-            type="number"
+          <MoneyInput
             disabled={!canWrite}
             value={form.defaultMovingCost}
-            onChange={(e) =>
-              setForm({ ...form, defaultMovingCost: Number(e.target.value) })
+            onChange={(defaultMovingCost) =>
+              setForm({ ...form, defaultMovingCost })
             }
           />
         </div>

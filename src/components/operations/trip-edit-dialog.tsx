@@ -6,6 +6,7 @@ import type { DeliveryOrderStatus } from "@prisma/client";
 import { updateDoTrip } from "@/actions/trips";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
+import { DecimalField, MoneyField } from "@/components/ui/number-input";
 import { FormDialog } from "@/components/masters/form-dialog";
 import { DO_STATUS_LABEL, isDoEditable } from "@/lib/operations/do-status";
 import { formatRupiah } from "@/lib/utils";
@@ -264,41 +265,33 @@ export function TripEditDialog({
           </div>
           <div>
             <Label>Tonase (ton)</Label>
-            <Input
-              type="number"
-              step="0.001"
-              min={0.001}
+            <DecimalField
               required
+              decimals={3}
               value={form.netto}
-              onChange={(e) => setForm({ ...form, netto: e.target.value })}
+              onChange={(netto) => setForm({ ...form, netto })}
             />
           </div>
           <div>
             <Label>Rate / Ton (Rp)</Label>
-            <Input
-              type="number"
-              min={0}
+            <MoneyField
               value={form.ratePerTon}
-              onChange={(e) => setForm({ ...form, ratePerTon: e.target.value })}
+              onChange={(ratePerTon) => setForm({ ...form, ratePerTon })}
             />
           </div>
           <div>
             <Label>Uang Jalan (Rp)</Label>
-            <Input
-              type="number"
-              min={0}
+            <MoneyField
               value={form.uangJalan}
-              onChange={(e) => setForm({ ...form, uangJalan: e.target.value })}
+              onChange={(uangJalan) => setForm({ ...form, uangJalan })}
             />
           </div>
           <div>
             <Label>KM Hauling</Label>
-            <Input
-              type="number"
-              step="0.1"
-              min={0}
+            <DecimalField
+              decimals={1}
               value={form.kmHauling}
-              onChange={(e) => setForm({ ...form, kmHauling: e.target.value })}
+              onChange={(kmHauling) => setForm({ ...form, kmHauling })}
             />
           </div>
           <div>
@@ -313,22 +306,20 @@ export function TripEditDialog({
             <legend className="px-1 text-xs font-semibold text-neutral-600">Solar</legend>
             <div>
               <Label>Liter</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min={0}
+              <DecimalField
+                decimals={2}
                 placeholder="kosong = tidak isi"
                 value={form.solarLiters}
-                onChange={(e) => setForm({ ...form, solarLiters: e.target.value })}
+                onChange={(solarLiters) => setForm({ ...form, solarLiters })}
               />
             </div>
             <div>
               <Label>Harga / liter (Rp)</Label>
-              <Input
-                type="number"
-                min={0}
+              <MoneyField
                 value={form.solarPricePerLiter}
-                onChange={(e) => setForm({ ...form, solarPricePerLiter: e.target.value })}
+                onChange={(solarPricePerLiter) =>
+                  setForm({ ...form, solarPricePerLiter })
+                }
               />
             </div>
             <div>
@@ -345,12 +336,10 @@ export function TripEditDialog({
             <legend className="px-1 text-xs font-semibold text-neutral-600">Biaya lain</legend>
             <div>
               <Label>Nominal (Rp)</Label>
-              <Input
-                type="number"
-                min={0}
+              <MoneyField
                 placeholder="kosong = tidak ada"
                 value={form.otherAmount}
-                onChange={(e) => setForm({ ...form, otherAmount: e.target.value })}
+                onChange={(otherAmount) => setForm({ ...form, otherAmount })}
               />
             </div>
             <div>
