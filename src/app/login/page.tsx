@@ -1,13 +1,29 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { COMPANY_NAME } from "@/lib/company";
 
+/** Ignore stale callbackUrl from an old Railway domain (breaks session cookies). */
+function useSanitizeLoginUrl() {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const cb = params.get("callbackUrl");
+    if (!cb) return;
+    try {
+      const target = new URL(cb, window.location.origin);
+      if (target.origin !== window.location.origin) {
+        window.history.replaceState({}, "", "/login");
+      }
+    } catch {
+      window.history.replaceState({}, "", "/login");
+    }
+  }, []);
+}
+
 export default function LoginPage() {
-  const router = useRouter();
+  useSanitizeLoginUrl();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -31,8 +47,8 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/");
-    router.refresh();
+    // Full navigation so the session cookie is visible to Edge middleware
+    window.location.href = "/";
   }
 
   return (
@@ -46,9 +62,6 @@ export default function LoginPage() {
             {COMPANY_NAME}
           </p>
           <h1 className="text-xl font-bold text-neutral-900">Masuk</h1>
-          <p className="mt-1 text-xs text-neutral-400">
-            Seed: owner@toyib.local · supir: budi — password123
-          </p>
         </div>
 
         <label className="block text-sm">

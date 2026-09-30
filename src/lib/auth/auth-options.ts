@@ -30,8 +30,25 @@ declare module "next-auth/jwt" {
   }
 }
 
+const useSecureCookies = process.env.NEXTAUTH_URL?.startsWith("https://") ?? false;
+
 export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
   session: { strategy: "jwt" },
+  useSecureCookies,
+  cookies: {
+    sessionToken: {
+      name: useSecureCookies
+        ? "__Secure-next-auth.session-token"
+        : "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: useSecureCookies,
+      },
+    },
+  },
   pages: {
     signIn: "/login",
   },
