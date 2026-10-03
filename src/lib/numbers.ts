@@ -6,12 +6,34 @@ export function formatIdInteger(value: number): string {
   }).format(Math.round(value));
 }
 
-/** Parse user input with dots as thousands (and optional comma decimals). */
+/**
+ * Parse user input:
+ * - `30,5` / `30,57` (koma desimal)
+ * - `30.5` / `30.57` (titik desimal — keyboard HP)
+ * - `1.234,56` (ribuan titik + desimal koma)
+ */
 export function parseIdNumber(input: string): number {
   const trimmed = input.trim();
   if (!trimmed) return 0;
-  const normalized = trimmed.replace(/\./g, "").replace(",", ".");
-  const n = Number(normalized);
+
+  if (trimmed.includes(",")) {
+    const normalized = trimmed.replace(/\./g, "").replace(",", ".");
+    const n = Number(normalized);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  if (trimmed.includes(".")) {
+    const parts = trimmed.split(".");
+    if (parts.length === 2 && /^\d+$/.test(parts[0]) && /^\d+$/.test(parts[1])) {
+      const n = Number(`${parts[0]}.${parts[1]}`);
+      return Number.isFinite(n) ? n : 0;
+    }
+    const normalized = trimmed.replace(/\./g, "");
+    const n = Number(normalized);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  const n = Number(trimmed);
   return Number.isFinite(n) ? n : 0;
 }
 
@@ -32,8 +54,24 @@ export function parseIdDecimal(input: string): number {
 /** Parse form string (plain or formatted) to number. */
 export function fieldToNumber(raw: string): number {
   if (!raw.trim()) return 0;
-  const fromId = parseIdNumber(raw);
-  if (fromId !== 0) return fromId;
-  const n = Number(raw.replace(",", "."));
-  return Number.isFinite(n) ? n : 0;
+  return parseIdNumber(raw);
+}
+
+/** Allow typing partial tonase (30, / 30. / 30,57). */
+export function sanitizeDecimalTyping(raw: string, maxDecimals: number): string {
+  let s = raw.replace(/[^\d.,]/g, "");
+  const comma = s.indexOf(",");
+  const dot = s.indexOf(".");
+  if (comma >= 0 && dot >= 0) {
+    if (comma < dot) s = s.replace(/\./g, "");
+    else s = s.replace(/,/g, "");
+  }
+  const sep = s.includes(",") ? "," : s.includes(".") ? "." : null;
+  if (sep) {
+    const i = s.indexOf(sep);
+    const head = s.slice(0, i + 1);
+    const tail = s.slice(i + 1).replace(/[.,]/g, "").slice(0, maxDecimals);
+    s = head + tail;
+  }
+  return s;
 }

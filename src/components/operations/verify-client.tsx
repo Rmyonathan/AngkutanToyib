@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import { DecimalField, MoneyField } from "@/components/ui/number-input";
+import { parseIdNumber } from "@/lib/numbers";
 import { cn, formatNumber, formatRupiah } from "@/lib/utils";
 
 export type PendingRow = {
@@ -137,7 +138,7 @@ export function VerifyInboxClient({
     );
   }
 
-  const num = (v: string | undefined) => (v ? Number(v) || 0 : 0);
+  const num = (v: string | undefined) => (v ? parseIdNumber(v) : 0);
   const solarTotal = form
     ? Math.round(num(form.solarLiters) * num(form.solarPricePerLiter))
     : 0;
@@ -388,6 +389,7 @@ export function VerifyInboxClient({
                   <DecimalField
                     required
                     decimals={3}
+                    placeholder="30,5 atau 30.57"
                     value={form.netto}
                     onChange={(netto) => set("netto", netto)}
                   />

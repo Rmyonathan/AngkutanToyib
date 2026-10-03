@@ -14,7 +14,11 @@ import { requireSession } from "@/lib/auth/session";
 import { canVerifyFieldDocs } from "@/lib/auth/rbac";
 import { tryParseDateOnly } from "@/lib/dates";
 import { nextInternalTripId } from "@/lib/operations/trip-id";
-import { optionalNumber, type ActionResult } from "@/lib/actions/types";
+import {
+  optionalNumber,
+  requiredNumber,
+  type ActionResult,
+} from "@/lib/actions/types";
 
 const optNum = z.preprocess(optionalNumber, z.number().min(0).nullable());
 
@@ -23,7 +27,10 @@ const verifySchema = z.object({
   date: z.string().min(1),
   customerTripId: z.string().min(1, "Pilih trip"),
   ticketNumber: z.string().trim().min(1, "Nomor tiket wajib"),
-  netto: z.coerce.number().positive("Tonase harus > 0"),
+  netto: z.preprocess(
+    requiredNumber,
+    z.number().positive("Tonase harus > 0")
+  ),
   kmHauling: optNum,
   ratePerTon: z.coerce.number().positive("Tarif/ton harus > 0"),
   uangJalan: z.coerce.number().min(0).default(0),

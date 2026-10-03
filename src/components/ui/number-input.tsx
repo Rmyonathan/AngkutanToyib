@@ -7,7 +7,8 @@ import {
   fieldToNumber,
   formatIdDecimal,
   formatIdInteger,
-  parseIdDecimal,
+  parseIdNumber,
+  sanitizeDecimalTyping,
 } from "@/lib/numbers";
 import { cn } from "@/lib/utils";
 
@@ -83,14 +84,14 @@ export function DecimalInput({
       autoComplete="off"
       value={text}
       onChange={(e) => {
-        const raw = e.target.value;
+        const raw = sanitizeDecimalTyping(e.target.value, decimals);
         setText(raw);
-        onChange(parseIdDecimal(raw));
+        onChange(parseIdNumber(raw));
       }}
       onBlur={(e) => {
-        const n = parseIdDecimal(text);
+        const n = parseIdNumber(text);
         onChange(n);
-        setText(formatIdDecimal(n, decimals));
+        setText(n === 0 ? "" : formatIdDecimal(n, decimals));
         onBlur?.(e);
       }}
     />
@@ -115,22 +116,51 @@ export function MoneyField({
   );
 }
 
+/** Tonase / desimal — simpan string di form; mendukung 30,5 dan 30.57 */
 export function DecimalField({
   value,
   onChange,
-  decimals = 2,
+  decimals = 3,
+  onBlur,
+  className,
   ...props
 }: BaseProps & {
   value: string;
   onChange: (value: string) => void;
   decimals?: number;
 }) {
+  const [text, setText] = useState(value);
+
+  useEffect(() => {
+    setText(value);
+  }, [value]);
+
   return (
-    <DecimalInput
+    <Input
       {...props}
-      decimals={decimals}
-      value={fieldToNumber(value)}
-      onChange={(n) => onChange(n === 0 ? "" : String(n))}
+      className={cn("tabular-nums", className)}
+      inputMode="decimal"
+      autoComplete="off"
+      value={text}
+      onChange={(e) => {
+        const raw = sanitizeDecimalTyping(e.target.value, decimals);
+        setText(raw);
+        onChange(raw);
+      }}
+      onBlur={(e) => {
+        const n = parseIdNumber(text);
+        if (!text.trim()) {
+          onChange("");
+          setText("");
+        } else {
+          const normalized = String(
+            Math.round(n * 10 ** decimals) / 10 ** decimals
+          );
+          onChange(normalized);
+          setText(formatIdDecimal(n, decimals) || normalized);
+        }
+        onBlur?.(e);
+      }}
     />
   );
 }

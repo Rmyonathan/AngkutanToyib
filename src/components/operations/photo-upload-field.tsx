@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Camera, Check, Loader2, X } from "lucide-react";
+import { Camera, Check, ImageIcon, Loader2, X } from "lucide-react";
 import { useUploadThing } from "@/lib/uploadthing";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +21,8 @@ export function PhotoUploadField({
   onChange,
   useCloudUpload = false,
 }: Props) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [localLoading, setLocalLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,6 +65,11 @@ export function PhotoUploadField({
     }
   }
 
+  function clearInputs() {
+    if (galleryRef.current) galleryRef.current.value = "";
+    if (cameraRef.current) cameraRef.current.value = "";
+  }
+
   return (
     <div className="rounded-2xl border-2 border-neutral-200 bg-white p-4">
       <div className="mb-3 flex items-start justify-between gap-2">
@@ -78,7 +84,10 @@ export function PhotoUploadField({
           <button
             type="button"
             className="rounded-full p-1 text-neutral-500 hover:bg-neutral-100"
-            onClick={() => onChange(null)}
+            onClick={() => {
+              onChange(null);
+              clearInputs();
+            }}
             aria-label="Hapus foto"
           >
             <X className="h-5 w-5" />
@@ -99,28 +108,48 @@ export function PhotoUploadField({
           </span>
         </div>
       ) : (
-        <button
-          type="button"
-          disabled={loading}
-          onClick={() => inputRef.current?.click()}
-          className={cn(
-            "flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-neutral-300 bg-neutral-50 px-4 py-10 text-neutral-700 transition hover:border-neutral-900 hover:bg-neutral-100",
-            loading && "opacity-60"
-          )}
-        >
-          {loading ? (
-            <Loader2 className="h-10 w-10 animate-spin" />
-          ) : (
-            <Camera className="h-10 w-10" />
-          )}
-          <span className="text-sm font-medium">
-            {loading ? "Mengunggah…" : "Ambil / Pilih Foto"}
-          </span>
-        </button>
+        <div className="space-y-2">
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => galleryRef.current?.click()}
+            className={cn(
+              "flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-neutral-300 bg-neutral-50 px-4 py-8 text-neutral-700 transition hover:border-neutral-900 hover:bg-neutral-100",
+              loading && "opacity-60"
+            )}
+          >
+            {loading ? (
+              <Loader2 className="h-10 w-10 animate-spin" />
+            ) : (
+              <ImageIcon className="h-10 w-10" />
+            )}
+            <span className="text-sm font-medium">
+              {loading ? "Mengunggah…" : "Pilih dari Galeri"}
+            </span>
+          </button>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => cameraRef.current?.click()}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white py-3 text-sm font-medium text-neutral-800 hover:bg-neutral-50"
+          >
+            <Camera className="h-5 w-5" />
+            Ambil Foto (Kamera)
+          </button>
+        </div>
       )}
 
+      {/* Galeri — tanpa capture agar HP boleh pilih album */}
       <input
-        ref={inputRef}
+        ref={galleryRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => onFile(e.target.files?.[0])}
+      />
+      {/* Kamera belakang (opsional) */}
+      <input
+        ref={cameraRef}
         type="file"
         accept="image/*"
         capture="environment"
