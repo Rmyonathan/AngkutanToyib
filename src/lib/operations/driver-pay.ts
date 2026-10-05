@@ -70,7 +70,7 @@ export function computeDoDriverPay(
   if (!master) return 0;
   const d = masterDriverPayDefaults(master);
   if (d.mode === DO_DRIVER_PAY_MODE.PER_TRIP) {
-    return d.amount;
+    return d.amount * dailyShare;
   }
   return netto * d.amount;
 }
