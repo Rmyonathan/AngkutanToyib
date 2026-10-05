@@ -14,6 +14,7 @@ import { requireSession } from "@/lib/auth/session";
 import { canVerifyFieldDocs } from "@/lib/auth/rbac";
 import { tryParseDateOnly } from "@/lib/dates";
 import { nextInternalTripId } from "@/lib/operations/trip-id";
+import { DO_DRIVER_PAY_MODE_VALUES } from "@/lib/operations/driver-pay-mode";
 import {
   optionalNumber,
   requiredNumber,
@@ -34,6 +35,11 @@ const verifySchema = z.object({
   kmHauling: optNum,
   ratePerTon: z.coerce.number().positive("Tarif/ton harus > 0"),
   uangJalan: z.coerce.number().min(0).default(0),
+  driverPayMode: z.enum(DO_DRIVER_PAY_MODE_VALUES),
+  driverPayAmount: z.preprocess(
+    requiredNumber,
+    z.number().positive("Nominal gaji supir harus > 0")
+  ),
   solarLiters: optNum,
   solarPricePerLiter: optNum,
   otherAmount: optNum,
@@ -57,6 +63,7 @@ function revalidateAll() {
   revalidatePath("/finance/profitabilitas");
   revalidatePath("/dashboard");
   revalidatePath("/reports");
+  revalidatePath("/reports/gaji-driver");
 }
 
 /**
@@ -131,6 +138,8 @@ export async function verifySubmission(
           customerTripId: trip.id,
           uangJalan: data.uangJalan,
           ratePerTon: data.ratePerTon,
+          driverPayMode: data.driverPayMode,
+          driverPayAmount: data.driverPayAmount,
           ticketNumber: data.ticketNumber,
           netto: Math.round(data.netto * 1000) / 1000,
           kmHauling: data.kmHauling ?? null,

@@ -1,9 +1,9 @@
 import { OperationalCostType, type Prisma } from "@prisma/client";
-import { calculateDriverCost } from "@/lib/calculations/hpp";
+import {
+  computeDoDriverPay,
+  computeDoDriverPayLegacy,
+} from "@/lib/operations/driver-pay";
 import { formatDateOnly } from "@/lib/dates";
-
-/** Gaji bulanan supir dibagi rata ke hari kerja ini */
-const DRIVER_WORK_DAYS_PER_MONTH = 25;
 
 export const DO_HPP_INCLUDE = {
   unit: true,
@@ -23,7 +23,7 @@ export type DoHppResult = {
   /** Biaya lain aktual (tol, parkir, dll.) */
   otherActual: number;
   uangJalan: number;
-  /** Gaji supir dari Master Driver */
+  /** Gaji supir (input per DO, fallback master) */
   driverCost: number;
   totalHpp: number;
   grossProfit: number;
@@ -33,7 +33,7 @@ export type DoHppResult = {
 
 /**
  * Biaya per DO = uang jalan + solar + biaya lain (yang diverifikasi dari foto
- * supir) + gaji supir (Master Driver). HPP Settings (ban, maintenance, cicilan,
+ * supir) + gaji supir (input DO). HPP Settings (ban, maintenance, cicilan,
  * depresiasi, moving) sengaja tidak ikut dihitung.
  *
  * Gaji harian/bulanan dibagi rata ke semua DO supir tsb di tanggal yang sama,
@@ -52,17 +52,16 @@ export function computeDoHpp(dos: DoWithHppRelations[]): Map<string, DoHppResult
     const netto = op.netto ?? 0;
     const share = 1 / (perDriverDay.get(dayKey(op)) ?? 1);
     const revenue = netto * (op.ratePerTon || op.customer?.ratePerTon || 0);
-    const driverCost = calculateDriverCost(
-      netto,
-      {
-        salarySystem: op.driver.salarySystem,
-        driverRatePerTon: op.driver.driverRatePerTon,
-        monthlySalary: op.driver.monthlySalary,
-        dailySalary: op.driver.dailySalary,
-      },
-      DRIVER_WORK_DAYS_PER_MONTH,
-      share
-    );
+    const driverCost =
+      op.driverPayAmount > 0
+        ? computeDoDriverPay(
+            netto,
+            op.driverPayMode,
+            op.driverPayAmount,
+            op.driver,
+            share
+          )
+        : computeDoDriverPayLegacy(netto, op.driver, share);
 
     let solarActual = 0;
     let otherActual = 0;

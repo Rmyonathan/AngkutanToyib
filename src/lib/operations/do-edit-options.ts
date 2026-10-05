@@ -12,7 +12,14 @@ export async function getDoEditOptions(): Promise<TripEditOptions> {
       orderBy: { unitNumber: "asc" },
     }),
     prisma.masterDriver.findMany({
-      select: { id: true, name: true },
+      select: {
+        id: true,
+        name: true,
+        salarySystem: true,
+        driverRatePerTon: true,
+        monthlySalary: true,
+        dailySalary: true,
+      },
       orderBy: { name: "asc" },
     }),
     prisma.customerTrip.findMany({

@@ -15,6 +15,9 @@ export type TripDetailData = {
   netto: number | null;
   ratePerTon: number;
   uangJalan: number;
+  /** Gaji supir untuk DO ini (dari input DO) */
+  driverGaji: number;
+  driverGajiDetail: string | null;
   kmHauling: number | null;
   notes: string | null;
   /** Upload supir yang jadi sumber DO ini */
@@ -54,7 +57,7 @@ export function TripDetailView({
   const rate = trip.ratePerTon;
   const revenue = netto * rate;
   const opsCostTotal = trip.costs.reduce((s, c) => s + c.amount, 0);
-  const ongkosan = trip.uangJalan + opsCostTotal;
+  const ongkosan = trip.uangJalan + opsCostTotal + trip.driverGaji;
   const untung = revenue - ongkosan;
 
   const docs = [
@@ -142,6 +145,19 @@ export function TripDetailView({
               <span className="text-neutral-600">Uang Jalan</span>
               <span className="font-medium tabular-nums">
                 {formatRupiah(trip.uangJalan)}
+              </span>
+            </li>
+            <li className="flex justify-between border-b border-neutral-50 pb-2">
+              <span className="text-neutral-600">
+                Gaji Supir
+                {trip.driverGajiDetail && (
+                  <span className="mt-0.5 block text-xs text-neutral-400">
+                    {trip.driverGajiDetail}
+                  </span>
+                )}
+              </span>
+              <span className="font-medium tabular-nums">
+                {formatRupiah(trip.driverGaji)}
               </span>
             </li>
             {trip.costs.map((c) => (

@@ -6,6 +6,14 @@ import { canManageTrips, hasPermission } from "@/lib/auth/rbac";
 import { prisma } from "@/lib/prisma";
 import { DO_STATUS_LABEL } from "@/lib/operations/do-status";
 import { doCostEditFields, getDoEditOptions } from "@/lib/operations/do-edit-options";
+import {
+  computeDoHpp,
+  DO_HPP_INCLUDE,
+  type DoWithHppRelations,
+} from "@/lib/finance/do-hpp";
+import { DRIVER_PAY_MODE_LABEL } from "@/lib/operations/driver-pay-mode";
+import { formatRupiah } from "@/lib/utils";
+import type { DoDriverPayMode } from "@/lib/operations/driver-pay-mode";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +34,7 @@ export default async function TripDetailPage({
     where: { id: params.id },
     include: {
       unit: { select: { unitNumber: true } },
-      driver: { select: { name: true } },
+      driver: true,
       customer: { select: { customerName: true } },
       customerTrip: { select: { name: true } },
       invoice: { select: { invoiceNumber: true } },
@@ -40,6 +48,19 @@ export default async function TripDetailPage({
   });
 
   if (!trip) notFound();
+
+  const sameDayDriverDos = await prisma.deliveryOrder.findMany({
+    where: { driverId: trip.driverId, date: trip.date },
+    include: DO_HPP_INCLUDE,
+  });
+  const hppRow = computeDoHpp(sameDayDriverDos as DoWithHppRelations[]).get(
+    trip.id
+  );
+  const payMode = trip.driverPayMode as DoDriverPayMode;
+  const driverGajiDetail =
+    trip.driverPayAmount > 0
+      ? `${DRIVER_PAY_MODE_LABEL[payMode]} · ${formatRupiah(trip.driverPayAmount)}`
+      : null;
 
   const editOptions = canWrite ? await getDoEditOptions() : null;
   const dateStr = trip.date.toISOString().slice(0, 10);
@@ -63,6 +84,8 @@ export default async function TripDetailPage({
               ...doCostEditFields(trip.operationalCosts),
               uangJalan: trip.uangJalan,
               ratePerTon: trip.ratePerTon,
+              driverPayMode: trip.driverPayMode,
+              driverPayAmount: trip.driverPayAmount,
               notes: trip.notes,
               status: trip.status,
               ticketNumber: trip.ticketNumber,
@@ -86,6 +109,8 @@ export default async function TripDetailPage({
         netto: trip.netto,
         ratePerTon: trip.ratePerTon,
         uangJalan: trip.uangJalan,
+        driverGaji: hppRow?.driverCost ?? 0,
+        driverGajiDetail,
         kmHauling: trip.kmHauling,
         notes: trip.notes,
         upload: sub

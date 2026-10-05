@@ -39,6 +39,12 @@ enum SalarySystem {
   DAILY
 }
 
+/// Gaji supir per DO (input saat verifikasi / edit DO)
+enum DoDriverPayMode {
+  PER_TON
+  PER_TRIP
+}
+
 enum AttendanceStatus {
   ACTIVE
   LEAVE
@@ -323,6 +329,9 @@ model DeliveryOrder {
   customerTripId  String?
   uangJalan       Float               @default(0)
   ratePerTon      Float               @default(0)
+  driverPayMode   DoDriverPayMode     @default(PER_TON)
+  /// Rp/ton jika PER_TON, flat Rp/trip jika PER_TRIP
+  driverPayAmount Float               @default(0)
   ticketNumber    String?             @unique
   /// Tonase dari tiket timbangan
   netto           Float?

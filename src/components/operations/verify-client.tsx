@@ -11,6 +11,15 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
 import { DecimalField, MoneyField } from "@/components/ui/number-input";
 import { parseIdNumber } from "@/lib/numbers";
+import {
+  computeDoDriverPay,
+  type MasterDriverPayProfile,
+} from "@/lib/operations/driver-pay";
+import {
+  DriverPayFields,
+  driverPayFormFromMaster,
+} from "@/components/operations/driver-pay-fields";
+import type { DoDriverPayMode } from "@/lib/operations/driver-pay-mode";
 import { cn, formatNumber, formatRupiah } from "@/lib/utils";
 
 export type PendingRow = {
@@ -18,6 +27,7 @@ export type PendingRow = {
   date: string;
   unitNumber: string;
   driverName: string;
+  driverPayMaster: MasterDriverPayProfile;
   customerTripId: string;
   suratJalanPhoto: string;
   solarPhoto: string | null;
@@ -49,6 +59,9 @@ type Form = {
   otherAmount: string;
   otherDescription: string;
   notes: string;
+  driverPayMode: DoDriverPayMode;
+  driverPayAmount: string;
+  useMasterDriverPay: boolean;
 };
 
 type PhotoKey = "suratJalan" | "solar" | "other";
@@ -80,6 +93,7 @@ export function VerifyInboxClient({
       otherAmount: "",
       otherDescription: "",
       notes: row.notes ?? "",
+      ...driverPayFormFromMaster(row.driverPayMaster),
     };
   }
 
@@ -143,6 +157,15 @@ export function VerifyInboxClient({
     ? Math.round(num(form.solarLiters) * num(form.solarPricePerLiter))
     : 0;
   const revenue = form ? num(form.netto) * num(form.ratePerTon) : 0;
+  const driverPayTotal =
+    form && selected
+      ? computeDoDriverPay(
+          num(form.netto),
+          form.driverPayMode,
+          num(form.driverPayAmount),
+          selected.driverPayMaster
+        )
+      : 0;
   const currentTrip = form ? tripById.get(form.customerTripId) : undefined;
 
   function submit(e: React.FormEvent) {
@@ -164,6 +187,8 @@ export function VerifyInboxClient({
         otherAmount: form.otherAmount,
         otherDescription: form.otherDescription || null,
         notes: form.notes || null,
+        driverPayMode: form.driverPayMode,
+        driverPayAmount: form.driverPayAmount,
       });
       if (!res.success) {
         setError(res.error);
@@ -424,6 +449,21 @@ export function VerifyInboxClient({
                 </div>
               </div>
 
+              <DriverPayFields
+                master={selected.driverPayMaster}
+                driverName={selected.driverName}
+                mode={form.driverPayMode}
+                amount={form.driverPayAmount}
+                useMaster={form.useMasterDriverPay}
+                onModeChange={(driverPayMode) => set("driverPayMode", driverPayMode)}
+                onAmountChange={(driverPayAmount) =>
+                  set("driverPayAmount", driverPayAmount)
+                }
+                onUseMasterChange={(useMasterDriverPay) =>
+                  set("useMasterDriverPay", useMasterDriverPay)
+                }
+              />
+
               <fieldset className="space-y-2 rounded-lg border border-neutral-200 p-3">
                 <legend className="px-1 text-xs font-semibold text-neutral-700">
                   Solar {selected.solarPhoto ? "" : "(tidak ada nota — kosongkan)"}
@@ -499,6 +539,12 @@ export function VerifyInboxClient({
                   <span className="text-neutral-500">Tonase</span>
                   <span className="tabular-nums">
                     {formatNumber(num(form.netto), 3)} ton
+                  </span>
+                </p>
+                <p className="flex justify-between">
+                  <span className="text-neutral-500">Est. gaji supir (DO ini)</span>
+                  <span className="font-semibold tabular-nums">
+                    {formatRupiah(driverPayTotal)}
                   </span>
                 </p>
               </div>

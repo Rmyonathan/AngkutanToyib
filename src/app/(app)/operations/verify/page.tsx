@@ -17,7 +17,15 @@ export default async function VerifyPage() {
     prisma.fieldSubmission.findMany({
       where: { status: FieldSubmissionStatus.PENDING },
       include: {
-        driver: { select: { name: true } },
+        driver: {
+          select: {
+            name: true,
+            salarySystem: true,
+            driverRatePerTon: true,
+            monthlySalary: true,
+            dailySalary: true,
+          },
+        },
         unit: { select: { unitNumber: true } },
       },
       orderBy: { createdAt: "asc" },
@@ -50,6 +58,12 @@ export default async function VerifyPage() {
         date: p.date.toISOString().slice(0, 10),
         unitNumber: p.unit.unitNumber,
         driverName: p.driver.name,
+        driverPayMaster: {
+          salarySystem: p.driver.salarySystem,
+          driverRatePerTon: p.driver.driverRatePerTon,
+          monthlySalary: p.driver.monthlySalary,
+          dailySalary: p.driver.dailySalary,
+        },
         customerTripId: p.customerTripId,
         suratJalanPhoto: p.suratJalanPhoto,
         solarPhoto: p.solarPhoto,

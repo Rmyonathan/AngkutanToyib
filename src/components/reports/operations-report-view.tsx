@@ -9,6 +9,7 @@ import { Input, Label, Select } from "@/components/ui/input";
 import { Kpi } from "@/components/finance/finance-shared";
 import { downloadCsv, toCsv } from "@/lib/reports/csv";
 import type { OperationsReport } from "@/lib/reports/get-operations-report";
+import { ReportsNav } from "@/components/reports/reports-nav";
 import { formatNumber, formatRupiah } from "@/lib/utils";
 import { addMonths, monthEnd, todayDateOnly } from "@/lib/dates";
 
@@ -88,6 +89,7 @@ export function OperationsReportView({
           { header: "Solar (Rp)", value: (r) => r.solarCost },
           { header: "Solar (L)", value: (r) => r.solarLiters },
           { header: "Biaya Lain", value: (r) => r.otherCost },
+          { header: "Gaji Supir", value: (r) => r.driverGaji },
           { header: "Total Ongkosan", value: (r) => r.ongkosan },
           { header: "Untung", value: (r) => Math.round(r.untung) },
           { header: "Status", value: (r) => r.status },
@@ -105,6 +107,7 @@ export function OperationsReportView({
           { header: "Solar (Rp)", value: (r) => r.solarCost },
           { header: "Solar (L)", value: (r) => r.solarLiters },
           { header: "Biaya Lain", value: (r) => r.otherCost },
+          { header: "Gaji Supir", value: (r) => r.driverGaji },
           { header: "Biaya Tanpa Trip", value: (r) => r.unlinkedCost },
           { header: "Total Ongkosan", value: (r) => r.ongkosan },
           { header: "Untung", value: (r) => Math.round(r.untung) },
@@ -138,6 +141,9 @@ export function OperationsReportView({
 
   return (
     <div className="space-y-6">
+      <div className="print:hidden">
+        <ReportsNav />
+      </div>
       <header className="flex flex-wrap items-end justify-between gap-3 print:hidden">
         <div>
           <h1 className="text-2xl font-bold text-neutral-900">Laporan</h1>
@@ -416,14 +422,8 @@ function DoTable({ report }: { report: OperationsReport }) {
               <td className={num}>{formatNumber(s.tonase, 2)} t</td>
               <td className={num} />
               <td className={num}>{formatRupiah(s.revenue)}</td>
-              <td className={num}>
-                {formatRupiah(s.uangJalan + s.solarCost + s.otherCost)}
-              </td>
-              <td className={num}>
-                {formatRupiah(
-                  s.revenue - (s.uangJalan + s.solarCost + s.otherCost)
-                )}
-              </td>
+              <td className={num}>{formatRupiah(s.ongkosan)}</td>
+              <td className={num}>{formatRupiah(s.untung)}</td>
             </tr>
           </tfoot>
         )}

@@ -1,13 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { AuditAction, OperationalCostType, Prisma } from "@prisma/client";
+import {
+  AuditAction,
+  OperationalCostType,
+  Prisma,
+} from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth/session";
 import { canManageTrips } from "@/lib/auth/rbac";
 import { tryParseDateOnly } from "@/lib/dates";
 import { recalcInvoice } from "@/lib/finance/invoice-recalc";
+import { DO_DRIVER_PAY_MODE_VALUES } from "@/lib/operations/driver-pay-mode";
 import {
   optionalNumber,
   requiredNumber,
@@ -24,6 +29,11 @@ const updateTripSchema = z.object({
   customerTripId: z.string().min(1, "Pilih trip"),
   uangJalan: z.coerce.number().min(0).default(0),
   ratePerTon: z.coerce.number().min(0).default(0),
+  driverPayMode: z.enum(DO_DRIVER_PAY_MODE_VALUES),
+  driverPayAmount: z.preprocess(
+    requiredNumber,
+    z.number().positive("Nominal gaji supir harus > 0")
+  ),
   ticketNumber: z.string().trim().min(1, "Nomor tiket wajib"),
   netto: z.preprocess(
     requiredNumber,
@@ -54,6 +64,7 @@ function revalidateTripPaths(id: string, invoiceId: string | null) {
   if (invoiceId) revalidatePath(`/finance/piutang/${invoiceId}`);
   revalidatePath("/dashboard");
   revalidatePath("/reports");
+  revalidatePath("/reports/gaji-driver");
 }
 
 /**
@@ -152,6 +163,8 @@ export async function updateDoTrip(
           customerId: trip.customerId,
           uangJalan: data.uangJalan,
           ratePerTon,
+          driverPayMode: data.driverPayMode,
+          driverPayAmount: data.driverPayAmount,
           ticketNumber: ticket,
           netto: Math.round(data.netto * 1000) / 1000,
           kmHauling: data.kmHauling ?? null,

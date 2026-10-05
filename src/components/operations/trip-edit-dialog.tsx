@@ -3,6 +3,12 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { DeliveryOrderStatus } from "@prisma/client";
+import type { DoDriverPayMode } from "@/lib/operations/driver-pay-mode";
+import {
+  DriverPayFields,
+  driverPayFormFromMaster,
+} from "@/components/operations/driver-pay-fields";
+import type { MasterDriverPayProfile } from "@/lib/operations/driver-pay";
 import { updateDoTrip } from "@/actions/trips";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
@@ -32,11 +38,13 @@ export type TripEditData = {
   solarPricePerLiter: number | null;
   otherAmount: number | null;
   otherDescription: string | null;
+  driverPayMode: DoDriverPayMode;
+  driverPayAmount: number;
 };
 
 export type TripEditOptions = {
   units: { id: string; unitNumber: string; defaultDriverId: string | null }[];
-  drivers: { id: string; name: string }[];
+  drivers: ({ id: string; name: string } & MasterDriverPayProfile)[];
   trips: {
     id: string;
     customerId: string;
@@ -62,6 +70,9 @@ type FormState = {
   solarPricePerLiter: string;
   otherAmount: string;
   otherDescription: string;
+  driverPayMode: DoDriverPayMode;
+  driverPayAmount: string;
+  useMasterDriverPay: boolean;
 };
 
 const str = (v: number | null | undefined) => (v == null ? "" : String(v));
@@ -82,6 +93,9 @@ function toForm(t: TripEditData): FormState {
     solarPricePerLiter: str(t.solarPricePerLiter),
     otherAmount: str(t.otherAmount),
     otherDescription: t.otherDescription ?? "",
+    driverPayMode: t.driverPayMode,
+    driverPayAmount: str(t.driverPayAmount),
+    useMasterDriverPay: false,
   };
 }
 
@@ -125,11 +139,40 @@ export function TripEditDialog({
 
   const editable = isDoEditable(trip.status);
 
+  function driverProfile(driverId: string): MasterDriverPayProfile | undefined {
+    const d = options.drivers.find((x) => x.id === driverId);
+    if (!d) return undefined;
+    const {
+      salarySystem,
+      driverRatePerTon,
+      monthlySalary,
+      dailySalary,
+    } = d;
+    return { salarySystem, driverRatePerTon, monthlySalary, dailySalary };
+  }
+
   function onUnitChange(unitId: string) {
     const unit = options.units.find((u) => u.id === unitId);
-    setForm((f) =>
-      f ? { ...f, unitId, driverId: unit?.defaultDriverId || f.driverId } : f
-    );
+    setForm((f) => {
+      if (!f) return f;
+      const driverId = unit?.defaultDriverId || f.driverId;
+      const pay =
+        f.useMasterDriverPay && driverProfile(driverId)
+          ? driverPayFormFromMaster(driverProfile(driverId)!)
+          : {};
+      return { ...f, unitId, driverId, ...pay };
+    });
+  }
+
+  function onDriverChange(driverId: string) {
+    setForm((f) => {
+      if (!f) return f;
+      const pay =
+        f.useMasterDriverPay && driverProfile(driverId)
+          ? driverPayFormFromMaster(driverProfile(driverId)!)
+          : {};
+      return { ...f, driverId, ...pay };
+    });
   }
 
   function onTripChange(customerTripId: string) {
@@ -167,6 +210,8 @@ export function TripEditDialog({
         otherAmount: form.otherAmount,
         otherDescription: form.otherDescription || null,
         notes: form.notes || null,
+        driverPayMode: form.driverPayMode,
+        driverPayAmount: form.driverPayAmount,
       });
       if (!res.success) {
         setError(res.error);
@@ -246,7 +291,7 @@ export function TripEditDialog({
             <Select
               required
               value={form.driverId}
-              onChange={(e) => setForm({ ...form, driverId: e.target.value })}
+              onChange={(e) => onDriverChange(e.target.value)}
             >
               {options.drivers.map((d) => (
                 <option key={d.id} value={d.id}>
@@ -286,6 +331,25 @@ export function TripEditDialog({
               onChange={(uangJalan) => setForm({ ...form, uangJalan })}
             />
           </div>
+          {driverProfile(form.driverId) && (
+            <div className="sm:col-span-2">
+              <DriverPayFields
+                master={driverProfile(form.driverId)!}
+                mode={form.driverPayMode}
+                amount={form.driverPayAmount}
+                useMaster={form.useMasterDriverPay}
+                onModeChange={(driverPayMode) =>
+                  setForm({ ...form, driverPayMode })
+                }
+                onAmountChange={(driverPayAmount) =>
+                  setForm({ ...form, driverPayAmount })
+                }
+                onUseMasterChange={(useMasterDriverPay) =>
+                  setForm({ ...form, useMasterDriverPay })
+                }
+              />
+            </div>
+          )}
           <div>
             <Label>KM Hauling</Label>
             <DecimalField

@@ -5,6 +5,11 @@ import {
   DO_STATUS_LABEL,
 } from "@/lib/operations/do-status";
 import { dateOnlyRange, formatDateOnly } from "@/lib/dates";
+import {
+  computeDoHpp,
+  DO_HPP_INCLUDE,
+  type DoWithHppRelations,
+} from "@/lib/finance/do-hpp";
 
 export type ReportFilters = {
   /** "YYYY-MM-DD" inclusive */
@@ -30,6 +35,7 @@ export type ReportDoRow = {
   solarCost: number;
   solarLiters: number;
   otherCost: number;
+  driverGaji: number;
   ongkosan: number;
   untung: number;
   status: string;
@@ -45,6 +51,7 @@ export type ReportUnitRow = {
   solarCost: number;
   solarLiters: number;
   otherCost: number;
+  driverGaji: number;
   /** Solar/biaya lain yang tidak terhubung ke DO manapun */
   unlinkedCost: number;
   ongkosan: number;
@@ -81,6 +88,7 @@ export type OperationsReport = {
     solarCost: number;
     solarLiters: number;
     otherCost: number;
+    driverGaji: number;
     unlinkedCost: number;
     ongkosan: number;
     untung: number;
@@ -113,8 +121,7 @@ export async function getOperationsReport(
     prisma.deliveryOrder.findMany({
       where: { ...doWhere, status: { in: DO_REVENUE_STATUSES } },
       include: {
-        unit: { select: { id: true, unitNumber: true } },
-        driver: { select: { name: true } },
+        ...DO_HPP_INCLUDE,
         customer: { select: { id: true, customerName: true } },
         customerTrip: { select: { name: true } },
         operationalCosts: {
@@ -144,10 +151,13 @@ export async function getOperationsReport(
     }),
   ]);
 
+  const hppMap = computeDoHpp(dos as DoWithHppRelations[]);
+
   const rows: ReportDoRow[] = dos.map((d) => {
     const netto = d.netto ?? 0;
     const rate = d.ratePerTon;
     const revenue = netto * rate;
+    const hpp = hppMap.get(d.id);
     let solarCost = 0;
     let solarLiters = 0;
     let otherCost = 0;
@@ -159,7 +169,9 @@ export async function getOperationsReport(
         otherCost += c.amount;
       }
     }
-    const ongkosan = d.uangJalan + solarCost + otherCost;
+    const driverGaji = hpp?.driverCost ?? 0;
+    const ongkosan =
+      d.uangJalan + solarCost + otherCost + driverGaji;
     return {
       id: d.id,
       internalTripId: d.internalTripId,
@@ -176,6 +188,7 @@ export async function getOperationsReport(
       solarCost,
       solarLiters,
       otherCost,
+      driverGaji,
       ongkosan,
       untung: revenue - ongkosan,
       status: DO_STATUS_LABEL[d.status],
@@ -197,6 +210,7 @@ export async function getOperationsReport(
         solarCost: 0,
         solarLiters: 0,
         otherCost: 0,
+        driverGaji: 0,
         unlinkedCost: 0,
         ongkosan: 0,
         untung: 0,
@@ -215,6 +229,7 @@ export async function getOperationsReport(
     u.solarCost += row.solarCost;
     u.solarLiters += row.solarLiters;
     u.otherCost += row.otherCost;
+    u.driverGaji += row.driverGaji;
   });
   for (const c of unlinkedCosts) {
     const u = ensureUnit(c.unitId, c.unit.unitNumber);
@@ -222,7 +237,8 @@ export async function getOperationsReport(
   }
   const perUnit = Array.from(unitMap.values())
     .map((u) => {
-      const ongkosan = u.uangJalan + u.solarCost + u.otherCost + u.unlinkedCost;
+      const ongkosan =
+        u.uangJalan + u.solarCost + u.otherCost + u.driverGaji + u.unlinkedCost;
       return { ...u, ongkosan, untung: u.revenue - ongkosan };
     })
     .sort((a, b) => a.unitNumber.localeCompare(b.unitNumber));
@@ -287,8 +303,9 @@ export async function getOperationsReport(
   const solarCost = sum(rows, (r) => r.solarCost);
   const solarLiters = sum(rows, (r) => r.solarLiters);
   const otherCost = sum(rows, (r) => r.otherCost);
+  const driverGaji = sum(rows, (r) => r.driverGaji);
   const unlinkedCost = sum(unlinkedCosts, (c) => c.amount);
-  const ongkosan = uangJalan + solarCost + otherCost + unlinkedCost;
+  const ongkosan = uangJalan + solarCost + otherCost + driverGaji + unlinkedCost;
   const untung = revenue - ongkosan;
 
   return {
@@ -303,6 +320,7 @@ export async function getOperationsReport(
       solarCost,
       solarLiters,
       otherCost,
+      driverGaji,
       unlinkedCost,
       ongkosan,
       untung,

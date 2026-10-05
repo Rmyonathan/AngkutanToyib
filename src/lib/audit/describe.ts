@@ -47,6 +47,8 @@ const FIELD_LABEL: Record<string, string> = {
   customerTripId: "Trip",
   uangJalan: "Uang jalan",
   ratePerTon: "Tarif / ton",
+  driverPayMode: "Jenis gaji supir (DO)",
+  driverPayAmount: "Nominal gaji supir (DO)",
   ticketNumber: "No. tiket timbangan",
   netto: "Tonase",
   kmHauling: "KM hauling",
@@ -147,7 +149,7 @@ const TABLE_FIELD_LABEL: Record<string, Record<string, string>> = {
 const HIDDEN = new Set(["id", "createdAt", "updatedAt", "passwordHash", "createdById"]);
 
 const MONEY = new Set([
-  "uangJalan", "ratePerTon", "amount", "withholdingAmount", "totalAmount", "paidAmount",
+  "uangJalan", "ratePerTon", "driverPayAmount", "amount", "withholdingAmount", "totalAmount", "paidAmount",
   "purchasePrice", "estimatedSalvageValue", "monthlyCicilan", "monthlyMaintenanceBudget",
   "monthlyMovingCost", "driverRatePerTon", "monthlySalary", "dailySalary", "globalSolarPrice",
   "globalTirePrice", "defaultMaintenanceBudget", "defaultCicilan", "defaultDepreciation",
@@ -165,6 +167,10 @@ const REF = new Set([
 ]);
 
 const ENUM_LABEL: Record<string, Record<string, string>> = {
+  DoDriverPayMode: {
+    PER_TON: "Per ton",
+    PER_TRIP: "Per trip (flat)",
+  },
   DeliveryOrder_status: {
     VERIFIED: "Terverifikasi",
     INVOICED: "Sudah ditagih",

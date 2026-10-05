@@ -22,7 +22,15 @@ export default async function TripsPage() {
     prisma.deliveryOrder.findMany({
       include: {
         unit: { select: { unitNumber: true } },
-        driver: { select: { name: true } },
+        driver: {
+          select: {
+            name: true,
+            salarySystem: true,
+            driverRatePerTon: true,
+            monthlySalary: true,
+            dailySalary: true,
+          },
+        },
         customer: { select: { customerName: true } },
         customerTrip: { select: { name: true } },
         invoice: { select: { invoiceNumber: true } },
@@ -62,6 +70,8 @@ export default async function TripsPage() {
         customerName: t.customer?.customerName ?? null,
         uangJalan: t.uangJalan,
         ratePerTon: t.ratePerTon,
+        driverPayMode: t.driverPayMode,
+        driverPayAmount: t.driverPayAmount,
         notes: t.notes,
         ticketNumber: t.ticketNumber,
         netto: t.netto,
