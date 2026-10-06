@@ -53,14 +53,16 @@ export function computeDoHpp(dos: DoWithHppRelations[]): Map<string, DoHppResult
     const share = 1 / (perDriverDay.get(dayKey(op)) ?? 1);
     const revenue = netto * (op.ratePerTon || op.customer?.ratePerTon || 0);
     const driverCost =
-      op.driverPayAmount > 0
-        ? computeDoDriverPay(
-            netto,
-            op.driverPayMode,
-            op.driverPayAmount,
-            op.driver,
-            share
-          )
+      op.driverPayAmount != null
+        ? op.driverPayAmount > 0
+          ? computeDoDriverPay(
+              netto,
+              op.driverPayMode,
+              op.driverPayAmount,
+              op.driver,
+              share
+            )
+          : 0
         : computeDoDriverPayLegacy(netto, op.driver, share);
 
     let solarActual = 0;

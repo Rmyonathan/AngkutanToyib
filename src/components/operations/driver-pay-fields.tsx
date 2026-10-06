@@ -76,6 +76,7 @@ export function DriverPayFields({
         <div>
           <Label>Nominal (Rp)</Label>
           <MoneyField
+            allowZero
             disabled={useMaster}
             placeholder={defaults.hint}
             value={amount}

@@ -107,7 +107,7 @@ export async function getDriverPayReport(filters: {
       netto,
       payMode,
       payModeLabel: DRIVER_PAY_MODE_LABEL[payMode],
-      payNominal: d.driverPayAmount,
+      payNominal: d.driverPayAmount ?? 0,
       gaji,
     });
   }

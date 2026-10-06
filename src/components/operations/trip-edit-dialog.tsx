@@ -39,7 +39,7 @@ export type TripEditData = {
   otherAmount: number | null;
   otherDescription: string | null;
   driverPayMode: DoDriverPayMode;
-  driverPayAmount: number;
+  driverPayAmount: number | null;
 };
 
 export type TripEditOptions = {

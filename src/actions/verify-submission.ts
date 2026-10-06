@@ -38,7 +38,7 @@ const verifySchema = z.object({
   driverPayMode: z.enum(DO_DRIVER_PAY_MODE_VALUES),
   driverPayAmount: z.preprocess(
     requiredNumber,
-    z.number().positive("Nominal gaji supir harus > 0")
+    z.number().min(0, "Nominal gaji supir tidak boleh negatif")
   ),
   solarLiters: optNum,
   solarPricePerLiter: optNum,

@@ -58,7 +58,7 @@ export default async function TripDetailPage({
   );
   const payMode = trip.driverPayMode as DoDriverPayMode;
   const driverGajiDetail =
-    trip.driverPayAmount > 0
+    trip.driverPayAmount != null
       ? `${DRIVER_PAY_MODE_LABEL[payMode]} · ${formatRupiah(trip.driverPayAmount)}`
       : null;
 

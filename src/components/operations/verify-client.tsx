@@ -157,15 +157,29 @@ export function VerifyInboxClient({
     ? Math.round(num(form.solarLiters) * num(form.solarPricePerLiter))
     : 0;
   const revenue = form ? num(form.netto) * num(form.ratePerTon) : 0;
-  const driverPayTotal =
-    form && selected
-      ? computeDoDriverPay(
-          num(form.netto),
-          form.driverPayMode,
-          num(form.driverPayAmount),
-          selected.driverPayMaster
-        )
-      : 0;
+  const driverPayTotal = (() => {
+    if (!form || !selected) return 0;
+    const amt = num(form.driverPayAmount);
+    const hasAmount =
+      form.useMasterDriverPay || form.driverPayAmount.trim() !== "";
+    if (!hasAmount) {
+      return computeDoDriverPay(
+        num(form.netto),
+        form.driverPayMode,
+        0,
+        selected.driverPayMaster,
+        1
+      );
+    }
+    if (amt === 0 && !form.useMasterDriverPay) return 0;
+    return computeDoDriverPay(
+      num(form.netto),
+      form.driverPayMode,
+      amt,
+      selected.driverPayMaster,
+      1
+    );
+  })();
   const currentTrip = form ? tripById.get(form.customerTripId) : undefined;
 
   function submit(e: React.FormEvent) {

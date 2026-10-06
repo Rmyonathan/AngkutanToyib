@@ -330,8 +330,8 @@ model DeliveryOrder {
   uangJalan       Float               @default(0)
   ratePerTon      Float               @default(0)
   driverPayMode   DoDriverPayMode     @default(PER_TON)
-  /// Rp/ton jika PER_TON, flat Rp/trip jika PER_TRIP
-  driverPayAmount Float               @default(0)
+  /// Rp/ton jika PER_TON, flat Rp/trip jika PER_TRIP; null = pakai master (DO lama)
+  driverPayAmount Float?
   ticketNumber    String?             @unique
   /// Tonase dari tiket timbangan
   netto           Float?

@@ -24,17 +24,23 @@ export function MoneyInput({
   value,
   onChange,
   onBlur,
+  allowZero = false,
   className,
   ...props
 }: BaseProps & {
   value: number;
   onChange: (value: number) => void;
+  /** Tampilkan & simpan 0 (default: kosong = 0) */
+  allowZero?: boolean;
 }) {
-  const [text, setText] = useState(() => formatIdInteger(value));
+  const display = (n: number) =>
+    allowZero && n === 0 ? "0" : formatIdInteger(n);
+
+  const [text, setText] = useState(() => display(value));
 
   useEffect(() => {
-    setText(formatIdInteger(value));
-  }, [value]);
+    setText(display(value));
+  }, [value, allowZero]);
 
   return (
     <Input
@@ -45,12 +51,17 @@ export function MoneyInput({
       value={text}
       onChange={(e) => {
         const digits = e.target.value.replace(/[^\d]/g, "");
-        const n = digits ? parseInt(digits, 10) : 0;
-        setText(digits ? formatIdInteger(n) : "");
+        if (!digits) {
+          setText("");
+          onChange(0);
+          return;
+        }
+        const n = parseInt(digits, 10);
+        setText(display(n));
         onChange(n);
       }}
       onBlur={(e) => {
-        setText(formatIdInteger(value));
+        setText(display(value));
         onBlur?.(e);
       }}
     />
@@ -102,16 +113,21 @@ export function DecimalInput({
 export function MoneyField({
   value,
   onChange,
+  allowZero = false,
   ...props
 }: BaseProps & {
   value: string;
   onChange: (value: string) => void;
+  allowZero?: boolean;
 }) {
   return (
     <MoneyInput
       {...props}
+      allowZero={allowZero}
       value={fieldToNumber(value)}
-      onChange={(n) => onChange(n === 0 ? "" : String(n))}
+      onChange={(n) =>
+        onChange(allowZero || n !== 0 ? String(n) : "")
+      }
     />
   );
 }

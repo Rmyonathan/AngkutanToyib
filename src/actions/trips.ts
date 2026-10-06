@@ -32,7 +32,7 @@ const updateTripSchema = z.object({
   driverPayMode: z.enum(DO_DRIVER_PAY_MODE_VALUES),
   driverPayAmount: z.preprocess(
     requiredNumber,
-    z.number().positive("Nominal gaji supir harus > 0")
+    z.number().min(0, "Nominal gaji supir tidak boleh negatif")
   ),
   ticketNumber: z.string().trim().min(1, "Nomor tiket wajib"),
   netto: z.preprocess(
