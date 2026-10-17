@@ -170,6 +170,11 @@ export function canVerifyFieldDocs(role: string): boolean {
   return hasPermission(role, "ops:verify");
 }
 
+/** Hapus DO — hanya Owner (koreksi double input / salah verifikasi) */
+export function canDeleteDeliveryOrder(role: string): boolean {
+  return role === ROLES.OWNER;
+}
+
 /** Edit DO */
 export function canManageTrips(role: string): boolean {
   return (

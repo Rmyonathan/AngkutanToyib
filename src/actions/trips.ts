@@ -3,13 +3,14 @@
 import { revalidatePath } from "next/cache";
 import {
   AuditAction,
+  FieldSubmissionStatus,
   OperationalCostType,
   Prisma,
 } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth/session";
-import { canManageTrips } from "@/lib/auth/rbac";
+import { canDeleteDeliveryOrder, canManageTrips } from "@/lib/auth/rbac";
 import { tryParseDateOnly } from "@/lib/dates";
 import { recalcInvoice } from "@/lib/finance/invoice-recalc";
 import { DO_DRIVER_PAY_MODE_VALUES } from "@/lib/operations/driver-pay-mode";
@@ -277,6 +278,72 @@ export async function updateDoTrip(
     return {
       success: false,
       error: e instanceof Error ? e.message : "Gagal update DO",
+    };
+  }
+}
+
+/** Hapus DO permanen — Owner only. Upload supir (jika ada) kembali ke antrian verifikasi. */
+export async function deleteDeliveryOrder(
+  id: string
+): Promise<ActionResult<{ internalTripId: string }>> {
+  try {
+    const session = await requireSession();
+    if (!canDeleteDeliveryOrder(session.user.role)) {
+      return { success: false, error: "Hanya Owner yang boleh menghapus DO" };
+    }
+
+    const existing = await prisma.deliveryOrder.findUnique({
+      where: { id },
+      include: {
+        invoice: { select: { id: true, invoiceNumber: true } },
+        fieldSubmission: { select: { id: true } },
+        operationalCosts: { select: { id: true } },
+      },
+    });
+    if (!existing) return { success: false, error: "DO tidak ditemukan" };
+
+    const invoiceId = existing.invoiceId;
+    const snapshot = toJson(existing);
+
+    await prisma.$transaction(async (tx) => {
+      if (existing.fieldSubmission) {
+        await tx.fieldSubmission.update({
+          where: { id: existing.fieldSubmission.id },
+          data: {
+            deliveryOrderId: null,
+            status: FieldSubmissionStatus.PENDING,
+          },
+        });
+      }
+      if (existing.operationalCosts.length > 0) {
+        await tx.operationalCost.deleteMany({
+          where: { deliveryOrderId: id },
+        });
+      }
+      await tx.deliveryOrder.delete({ where: { id } });
+      if (invoiceId) await recalcInvoice(tx, invoiceId);
+      await tx.auditLog.create({
+        data: {
+          userId: session.user.id,
+          action: AuditAction.DELETE,
+          tableName: "DeliveryOrder",
+          recordId: id,
+          oldData: snapshot,
+        },
+      });
+    });
+
+    revalidatePath("/operations/trips");
+    revalidatePath("/operations/verify");
+    revalidateTripPaths(id, invoiceId);
+    return {
+      success: true,
+      data: { internalTripId: existing.internalTripId },
+    };
+  } catch (e) {
+    return {
+      success: false,
+      error: e instanceof Error ? e.message : "Gagal hapus DO",
     };
   }
 }

@@ -1,8 +1,13 @@
 import { notFound, redirect } from "next/navigation";
 import { TripDetailView } from "@/components/operations/trip-detail-view";
+import { DeleteDoButton } from "@/components/operations/delete-do-button";
 import { TripEditButton } from "@/components/operations/trip-edit-dialog";
 import { requireSession } from "@/lib/auth/session";
-import { canManageTrips, hasPermission } from "@/lib/auth/rbac";
+import {
+  canDeleteDeliveryOrder,
+  canManageTrips,
+  hasPermission,
+} from "@/lib/auth/rbac";
 import { prisma } from "@/lib/prisma";
 import { DO_STATUS_LABEL } from "@/lib/operations/do-status";
 import { doCostEditFields, getDoEditOptions } from "@/lib/operations/do-edit-options";
@@ -29,6 +34,7 @@ export default async function TripDetailPage({
     hasPermission(session.user.role, "ops:verify");
   if (!canRead) redirect("/dashboard?error=forbidden");
   const canWrite = canManageTrips(session.user.role);
+  const canDelete = canDeleteDeliveryOrder(session.user.role);
 
   const trip = await prisma.deliveryOrder.findUnique({
     where: { id: params.id },
@@ -69,30 +75,41 @@ export default async function TripDetailPage({
   return (
     <TripDetailView
       actions={
-        editOptions ? (
-          <TripEditButton
-            options={editOptions}
-            trip={{
-              id: trip.id,
-              internalTripId: trip.internalTripId,
-              date: dateStr,
-              unitId: trip.unitId,
-              driverId: trip.driverId,
-              customerTripId: trip.customerTripId,
-              customerId: trip.customerId,
-              invoiceNumber: trip.invoice?.invoiceNumber ?? null,
-              ...doCostEditFields(trip.operationalCosts),
-              uangJalan: trip.uangJalan,
-              ratePerTon: trip.ratePerTon,
-              driverPayMode: trip.driverPayMode,
-              driverPayAmount: trip.driverPayAmount,
-              notes: trip.notes,
-              status: trip.status,
-              ticketNumber: trip.ticketNumber,
-              netto: trip.netto,
-              kmHauling: trip.kmHauling,
-            }}
-          />
+        editOptions || canDelete ? (
+          <div className="flex flex-wrap gap-2">
+            {editOptions ? (
+              <TripEditButton
+                options={editOptions}
+                trip={{
+                  id: trip.id,
+                  internalTripId: trip.internalTripId,
+                  date: dateStr,
+                  unitId: trip.unitId,
+                  driverId: trip.driverId,
+                  customerTripId: trip.customerTripId,
+                  customerId: trip.customerId,
+                  invoiceNumber: trip.invoice?.invoiceNumber ?? null,
+                  ...doCostEditFields(trip.operationalCosts),
+                  uangJalan: trip.uangJalan,
+                  ratePerTon: trip.ratePerTon,
+                  driverPayMode: trip.driverPayMode,
+                  driverPayAmount: trip.driverPayAmount,
+                  notes: trip.notes,
+                  status: trip.status,
+                  ticketNumber: trip.ticketNumber,
+                  netto: trip.netto,
+                  kmHauling: trip.kmHauling,
+                }}
+              />
+            ) : null}
+            {canDelete ? (
+              <DeleteDoButton
+                id={trip.id}
+                internalTripId={trip.internalTripId}
+                invoiceNumber={trip.invoice?.invoiceNumber ?? null}
+              />
+            ) : null}
+          </div>
         ) : null
       }
       trip={{
