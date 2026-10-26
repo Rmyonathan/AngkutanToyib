@@ -40,7 +40,7 @@ export default async function TripsPage() {
         },
       },
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-      take: 200,
+      //take: 200,
     }),
     prisma.fieldSubmission.count({
       where: { status: FieldSubmissionStatus.PENDING },
