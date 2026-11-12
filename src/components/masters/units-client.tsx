@@ -142,7 +142,11 @@ export function UnitsClient({
     if (!confirm(`Hapus unit ${label}?`)) return;
     startTransition(async () => {
       const res = await deleteUnit(id);
-      if (!res.success) alert(res.error);
+      if (!res.success) {
+        window.alert(res.error);
+        return;
+      }
+      window.alert(res.data.summary);
     });
   }
 

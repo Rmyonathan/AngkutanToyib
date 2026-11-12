@@ -6,7 +6,18 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { setUnitDriver } from "@/lib/masters/assign-unit";
 import { requireSession } from "@/lib/auth/session";
-import { hasPermission } from "@/lib/auth/rbac";
+import { canDeleteDeliveryOrder, hasPermission } from "@/lib/auth/rbac";
+import {
+  closeActiveBreakdownsForUnit,
+  syncUnitBreakdownStatus,
+} from "@/lib/breakdown/unit-status";
+import {
+  getUnitDeleteBlockers,
+  prismaFkMessage,
+  purgeUnitForDelete,
+  unitDeleteError,
+  unitDeleteSuccessSummary,
+} from "@/lib/masters/master-delete";
 import { emptyToNull, type ActionResult } from "@/lib/actions/types";
 
 const unitSchema = z.object({
@@ -106,10 +117,17 @@ export async function updateUnit(
     if (!existing) return { success: false, error: "Unit tidak ditemukan" };
 
     const row = await prisma.$transaction(async (tx) => {
+      if (
+        existing.status === UnitStatus.BREAKDOWN &&
+        parsed.data.status !== UnitStatus.BREAKDOWN
+      ) {
+        await closeActiveBreakdownsForUnit(tx, id);
+      }
       await tx.masterUnit.update({
         where: { id },
         data: mapUnitData(parsed.data),
       });
+      await syncUnitBreakdownStatus(tx, [id]);
       await setUnitDriver(tx, id, emptyToNull(parsed.data.defaultDriverId ?? null));
       const updated = await tx.masterUnit.findUniqueOrThrow({ where: { id } });
       await tx.auditLog.create({
@@ -198,13 +216,27 @@ export async function assignUnitDriver(
   }
 }
 
-export async function deleteUnit(id: string): Promise<ActionResult<{ id: string }>> {
+export async function deleteUnit(
+  id: string
+): Promise<ActionResult<{ id: string; summary: string }>> {
   try {
     const session = await assertMasterWrite();
     const existing = await prisma.masterUnit.findUnique({ where: { id } });
     if (!existing) return { success: false, error: "Unit tidak ditemukan" };
 
+    const isOwner = canDeleteDeliveryOrder(session.user.role);
+    const blockers = await getUnitDeleteBlockers(id);
+    const blocked = unitDeleteError(blockers, isOwner);
+    if (blocked) return { success: false, error: blocked };
+
+    const ownerPurged =
+      isOwner &&
+      (blockers.fieldSubmissions > 0 ||
+        blockers.operationalCosts > 0 ||
+        (blockers.breakdowns ?? 0) > 0);
+
     await prisma.$transaction(async (tx) => {
+      if (isOwner) await purgeUnitForDelete(tx, id);
       await tx.masterUnit.delete({ where: { id } });
       await tx.auditLog.create({
         data: {
@@ -219,15 +251,27 @@ export async function deleteUnit(id: string): Promise<ActionResult<{ id: string 
     });
 
     revalidatePath("/masters/units");
+    revalidatePath("/masters/drivers");
+    revalidatePath("/operations/verify");
     revalidatePath("/dashboard");
-    return { success: true, data: { id } };
+    return {
+      success: true,
+      data: {
+        id,
+        summary: unitDeleteSuccessSummary(
+          existing.unitNumber,
+          blockers,
+          ownerPurged
+        ),
+      },
+    };
   } catch (err) {
-    const message =
-      err instanceof Error && err.message.includes("Foreign key")
-        ? "Unit masih punya data operasi/breakdown — tidak bisa dihapus"
-        : err instanceof Error
-          ? err.message
-          : "Gagal hapus unit";
-    return { success: false, error: message };
+    return {
+      success: false,
+      error: prismaFkMessage(
+        err,
+        "Unit tidak bisa dihapus karena masih dipakai di operasional. Coba status Standby, atau minta Owner menghapus."
+      ),
+    };
   }
 }

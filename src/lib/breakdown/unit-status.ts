@@ -54,3 +54,27 @@ export async function syncUnitBreakdownStatus(
     data: { status: UnitStatus.RUNNING },
   });
 }
+
+/** Tutup breakdown yang masih berjalan (end kosong / di masa depan) — mis. saat unit di-set Running dari master */
+export async function closeActiveBreakdownsForUnit(
+  db: Db,
+  unitId: string,
+  endTime: Date = new Date()
+) {
+  const rows = await db.breakdownHistory.findMany({
+    where: { unitId, ...activeBreakdownWhere(endTime) },
+  });
+  for (const row of rows) {
+    const hours =
+      Math.round(
+        ((endTime.getTime() - row.startTime.getTime()) / (1000 * 60 * 60)) * 100
+      ) / 100;
+    await db.breakdownHistory.update({
+      where: { id: row.id },
+      data: {
+        endTime,
+        downtimeHours: Math.max(0, hours),
+      },
+    });
+  }
+}

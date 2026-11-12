@@ -12,7 +12,14 @@ import {
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth/session";
-import { hasPermission } from "@/lib/auth/rbac";
+import { canDeleteDeliveryOrder, hasPermission } from "@/lib/auth/rbac";
+import {
+  driverDeleteError,
+  driverDeleteSuccessSummary,
+  getDriverDeleteBlockers,
+  prismaFkMessage,
+  purgeDriverForDelete,
+} from "@/lib/masters/master-delete";
 import { setDriverUnit } from "@/lib/masters/assign-unit";
 import { LOGIN_ID_REGEX } from "@/lib/auth/login-id";
 import {
@@ -263,13 +270,24 @@ export async function updateDriver(
 
 export async function deleteDriver(
   id: string
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionResult<{ id: string; summary: string }>> {
   try {
     const session = await assertMasterWrite();
     const existing = await prisma.masterDriver.findUnique({ where: { id } });
     if (!existing) return { success: false, error: "Driver tidak ditemukan" };
 
+    const isOwner = canDeleteDeliveryOrder(session.user.role);
+    const blockers = await getDriverDeleteBlockers(id);
+    const blocked = driverDeleteError(blockers, isOwner);
+    if (blocked) return { success: false, error: blocked };
+
+    const ownerPurged =
+      isOwner &&
+      (blockers.fieldSubmissions > 0 ||
+        blockers.operationalCosts > 0);
+
     await prisma.$transaction(async (tx) => {
+      if (isOwner) await purgeDriverForDelete(tx, id);
       await tx.masterDriver.delete({ where: { id } });
       // Akun login tidak dihapus (terikat audit log) — cukup dinonaktifkan
       if (existing.userId) {
@@ -291,16 +309,26 @@ export async function deleteDriver(
     });
 
     revalidateDriverPaths();
-    return { success: true, data: { id } };
+    revalidatePath("/operations/verify");
+    return {
+      success: true,
+      data: {
+        id,
+        summary: driverDeleteSuccessSummary(
+          existing.name,
+          blockers,
+          ownerPurged,
+          !!existing.userId
+        ),
+      },
+    };
   } catch (err) {
     return {
       success: false,
-      error:
-        err instanceof Error && err.message.includes("Foreign key")
-          ? "Driver masih terpakai di operasi — tidak bisa dihapus (ubah absensi ke INACTIVE)"
-          : err instanceof Error
-            ? err.message
-            : "Gagal hapus driver",
+      error: prismaFkMessage(
+        err,
+        "Supir tidak bisa dihapus karena masih dipakai di operasional. Coba ubah Absensi ke INACTIVE, atau minta Owner menghapus."
+      ),
     };
   }
 }

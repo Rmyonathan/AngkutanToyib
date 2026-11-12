@@ -130,7 +130,11 @@ export function DriversClient({
     if (!confirm(`Hapus driver ${label}?`)) return;
     startTransition(async () => {
       const res = await deleteDriver(id);
-      if (!res.success) alert(res.error);
+      if (!res.success) {
+        window.alert(res.error);
+        return;
+      }
+      window.alert(res.data.summary);
     });
   }
 
